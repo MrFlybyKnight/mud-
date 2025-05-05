@@ -38,8 +38,7 @@ const HeartRateMonitor: React.FC = () => {
 
         <Progress 
           value={heartRate} 
-          max={150} 
-          min={40}
+          max={150}
           className="h-2 mb-4"
           style={{ 
             backgroundColor: 'hsl(var(--secondary))',

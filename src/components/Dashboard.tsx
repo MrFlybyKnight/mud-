@@ -1,10 +1,19 @@
 
 import React from 'react';
+import { useMonitoring } from '@/contexts/MonitoringContext';
 import HeartRateMonitor from './HeartRateMonitor';
 import SpeechMonitor from './SpeechMonitor';
 import SettingsDialog from './SettingsDialog';
+import SetupWizard from './SetupWizard';
+import { Button } from '@/components/ui/button';
 
 const Dashboard: React.FC = () => {
+  const { isSetupComplete, startSetup } = useMonitoring();
+
+  if (!isSetupComplete) {
+    return <SetupWizard />;
+  }
+
   return (
     <div className="container max-w-4xl mx-auto px-4 mb-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -12,8 +21,9 @@ const Dashboard: React.FC = () => {
         <SpeechMonitor />
       </div>
       
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-4 flex-wrap">
         <SettingsDialog />
+        <Button variant="outline" onClick={startSetup}>Re-calibrate</Button>
       </div>
       
       <div className="mt-8 p-4 bg-accent rounded-lg">
