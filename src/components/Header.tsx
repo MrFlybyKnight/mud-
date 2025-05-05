@@ -20,28 +20,26 @@ const Header: React.FC = () => {
             onClick={toggleMonitoring}
             variant={isMonitoring ? "destructive" : "default"}
           >
-            {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
+            {isMonitoring ? "Pause Monitoring" : "Resume Monitoring"}
           </Button>
           
-          {isMonitoring && (
-            <Button 
-              onClick={toggleTalking}
-              variant="outline"
-              className={isTalking ? "bg-accent" : ""}
-            >
-              {isTalking ? (
-                <>
-                  <Mic className="mr-2 h-4 w-4" />
-                  Simulating Speech
-                </>
-              ) : (
-                <>
-                  <MicOff className="mr-2 h-4 w-4" />
-                  Silent Mode
-                </>
-              )}
-            </Button>
-          )}
+          <Button 
+            onClick={toggleTalking}
+            variant="outline"
+            className={isTalking ? "bg-accent" : ""}
+          >
+            {isTalking ? (
+              <>
+                <Mic className="mr-2 h-4 w-4" />
+                Simulating Speech
+              </>
+            ) : (
+              <>
+                <MicOff className="mr-2 h-4 w-4" />
+                Silent Mode
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </header>

@@ -83,8 +83,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [speechLowThreshold, setSpeechLowThreshold] = useState<number>(20);
   const [speechHighThreshold, setSpeechHighThreshold] = useState<number>(60);
   
-  // Control state
-  const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
+  // Control state - Set isMonitoring to true by default
+  const [isMonitoring, setIsMonitoring] = useState<boolean>(true);
   const [isTalking, setIsTalking] = useState<boolean>(false);
   const [runInBackground, setRunInBackground] = useState<boolean>(true); // Default to running in background
 
@@ -315,13 +315,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       duration: 3000,
     });
     
-    // Initialize assessment data
+    // Initialize assessment data and start monitoring immediately after setup
     setCurrentAssessmentData({
       heartRateReadings: [],
       speechPercentageReadings: [],
       startTime: new Date(),
     });
     setLastAssessmentTime(null);
+    setIsMonitoring(true); // Start monitoring automatically after setup
   };
 
   const nextSetupStep = () => {
