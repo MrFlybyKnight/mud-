@@ -1,7 +1,16 @@
-
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage } from '../utils/monitoringUtils';
 import { useToast } from '@/components/ui/use-toast';
+import { format } from 'date-fns';
+
+// Define the assessment data structure
+interface AssessmentData {
+  timestamp: Date;
+  averageHeartRate: number;
+  averageSpeechPercentage: number;
+  duration: number; // in minutes
+  correlation: 'positive' | 'negative' | 'neutral';
+}
 
 interface MonitoringContextType {
   // Heart rate
@@ -25,6 +34,8 @@ interface MonitoringContextType {
   toggleMonitoring: () => void;
   isTalking: boolean;
   toggleTalking: () => void;
+  runInBackground: boolean;
+  toggleBackgroundMode: () => void;
 
   // Setup and calibration
   isSetupComplete: boolean;
@@ -40,6 +51,15 @@ interface MonitoringContextType {
   setBaselineVoiceSpeed: (value: number) => void;
   setBaselineVoiceTone: (value: number) => void;
   setBaselineVoiceAccent: (value: number) => void;
+  
+  // Assessment data
+  assessments: AssessmentData[];
+  currentAssessmentData: {
+    heartRateReadings: number[];
+    speechPercentageReadings: number[];
+    startTime: Date | null;
+  };
+  lastAssessmentTime: Date | null;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
@@ -66,6 +86,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Control state
   const [isMonitoring, setIsMonitoring] = useState<boolean>(false);
   const [isTalking, setIsTalking] = useState<boolean>(false);
+  const [runInBackground, setRunInBackground] = useState<boolean>(true); // Default to running in background
 
   // Setup and calibration state
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
@@ -75,15 +96,45 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [baselineVoiceTone, setBaselineVoiceTone] = useState<number>(0);
   const [baselineVoiceAccent, setBaselineVoiceAccent] = useState<number>(0);
 
+  // Assessment state
+  const [assessments, setAssessments] = useState<AssessmentData[]>([]);
+  const [currentAssessmentData, setCurrentAssessmentData] = useState<{
+    heartRateReadings: number[];
+    speechPercentageReadings: number[];
+    startTime: Date | null;
+  }>({
+    heartRateReadings: [],
+    speechPercentageReadings: [],
+    startTime: null,
+  });
+  const [lastAssessmentTime, setLastAssessmentTime] = useState<Date | null>(null);
+  
   const { toast } = useToast();
   
   // Derived status
   const heartRateStatus = determineStatus(heartRate, heartRateLowThreshold, heartRateHighThreshold);
   const speechStatus = determineStatus(speechPercentage, speechLowThreshold, speechHighThreshold);
   
+  // Reference to track if the app is in foreground
+  const isAppForeground = useRef<boolean>(true);
+
+  // Effect to handle visibility changes (simulate background mode)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isAppForeground.current = document.visibilityState === 'visible';
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // Simulation effect for heart rate
   useEffect(() => {
     if (!isMonitoring) return;
+    
+    // Only proceed if app is in foreground OR background running is enabled
+    if (!isAppForeground.current && !runInBackground) return;
     
     const heartInterval = setInterval(() => {
       // Generate heart rate with influence from speech and current status
@@ -91,24 +142,125 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (isTalking) baseline += 10;
       if (speechStatus === 'high') baseline += 5;
       
-      setHeartRate(generateHeartRate(baseline, 8));
+      const newHeartRate = generateHeartRate(baseline, 8);
+      setHeartRate(newHeartRate);
+      
+      // Add to assessment data
+      if (isSetupComplete) {
+        setCurrentAssessmentData(prev => {
+          // Initialize start time if not set
+          const startTime = prev.startTime || new Date();
+          return {
+            heartRateReadings: [...prev.heartRateReadings, newHeartRate],
+            speechPercentageReadings: prev.speechPercentageReadings,
+            startTime,
+          };
+        });
+      }
     }, 1000);
     
     return () => clearInterval(heartInterval);
-  }, [isMonitoring, isTalking, speechStatus, baselineHeartRate]);
+  }, [isMonitoring, isTalking, speechStatus, baselineHeartRate, runInBackground, isSetupComplete]);
   
   // Simulation effect for speech
   useEffect(() => {
     if (!isMonitoring) return;
     
+    // Only proceed if app is in foreground OR background running is enabled
+    if (!isAppForeground.current && !runInBackground) return;
+    
     const speechInterval = setInterval(() => {
-      setSpeechPercentage(prevPercentage => 
-        generateSpeechPercentage(isTalking, prevPercentage)
-      );
+      const newSpeechPercentage = generateSpeechPercentage(isTalking, speechPercentage);
+      setSpeechPercentage(newSpeechPercentage);
+      
+      // Add to assessment data
+      if (isSetupComplete) {
+        setCurrentAssessmentData(prev => {
+          // Initialize start time if not set
+          const startTime = prev.startTime || new Date();
+          return {
+            heartRateReadings: prev.heartRateReadings,
+            speechPercentageReadings: [...prev.speechPercentageReadings, newSpeechPercentage],
+            startTime,
+          };
+        });
+      }
     }, 500);
     
     return () => clearInterval(speechInterval);
-  }, [isMonitoring, isTalking]);
+  }, [isMonitoring, isTalking, speechPercentage, runInBackground, isSetupComplete]);
+  
+  // Hourly assessment effect
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    const calculateAssessment = () => {
+      if (currentAssessmentData.heartRateReadings.length === 0 || 
+          currentAssessmentData.speechPercentageReadings.length === 0 ||
+          !currentAssessmentData.startTime) {
+        return;
+      }
+      
+      // Calculate averages
+      const avgHeartRate = currentAssessmentData.heartRateReadings.reduce((a, b) => a + b, 0) / 
+                           currentAssessmentData.heartRateReadings.length;
+      
+      const avgSpeechPercentage = currentAssessmentData.speechPercentageReadings.reduce((a, b) => a + b, 0) / 
+                                 currentAssessmentData.speechPercentageReadings.length;
+      
+      // Calculate correlation between heart rate and speech
+      // Simple correlation: if both are high/low together = positive, otherwise = negative
+      let correlation: 'positive' | 'negative' | 'neutral' = 'neutral';
+      
+      const heartRateDeviation = avgHeartRate - baselineHeartRate;
+      const speechDeviation = avgSpeechPercentage - 50; // Using 50% as neutral point
+      
+      if (Math.abs(heartRateDeviation) > 5 && Math.abs(speechDeviation) > 10) {
+        correlation = (heartRateDeviation * speechDeviation > 0) ? 'positive' : 'negative';
+      }
+      
+      // Calculate duration in minutes
+      const durationMs = new Date().getTime() - currentAssessmentData.startTime.getTime();
+      const durationMinutes = Math.round(durationMs / (1000 * 60));
+      
+      const newAssessment: AssessmentData = {
+        timestamp: new Date(),
+        averageHeartRate: Math.round(avgHeartRate),
+        averageSpeechPercentage: Math.round(avgSpeechPercentage),
+        duration: durationMinutes,
+        correlation,
+      };
+      
+      setAssessments(prev => [...prev, newAssessment]);
+      setLastAssessmentTime(new Date());
+      
+      // Notify user with a summary
+      const formattedTime = format(new Date(), 'h:mm a');
+      toast({
+        title: `Hourly Assessment (${formattedTime})`,
+        description: `Heart Rate: ${Math.round(avgHeartRate)} BPM | Speech: ${Math.round(avgSpeechPercentage)}% | Correlation: ${correlation}`,
+        duration: 5000,
+      });
+      
+      // Reset current data for next hour
+      setCurrentAssessmentData({
+        heartRateReadings: [],
+        speechPercentageReadings: [],
+        startTime: new Date(),
+      });
+    };
+    
+    // Set up hourly assessment timer
+    const hourlyAssessmentTimer = setInterval(calculateAssessment, 60 * 60 * 1000); // Every hour
+    
+    // Also calculate assessment when stopping monitoring
+    return () => {
+      clearInterval(hourlyAssessmentTimer);
+      if (isMonitoring) {
+        calculateAssessment();
+      }
+    };
+  }, [isSetupComplete, isMonitoring, currentAssessmentData, baselineHeartRate, toast]);
   
   // Alert effect when status changes
   useEffect(() => {
@@ -139,7 +291,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const toggleMonitoring = () => setIsMonitoring(prev => !prev);
   const toggleTalking = () => setIsTalking(prev => !prev);
+  const toggleBackgroundMode = () => setRunInBackground(prev => !prev);
   
+  // Setup functions
   const startSetup = () => {
     setSetupStep(1);
     setIsSetupComplete(false);
@@ -160,6 +314,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       description: "Your baseline data has been recorded",
       duration: 3000,
     });
+    
+    // Initialize assessment data
+    setCurrentAssessmentData({
+      heartRateReadings: [],
+      speechPercentageReadings: [],
+      startTime: new Date(),
+    });
+    setLastAssessmentTime(null);
   };
 
   const nextSetupStep = () => {
@@ -185,6 +347,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     toggleMonitoring,
     isTalking,
     toggleTalking,
+    runInBackground,
+    toggleBackgroundMode,
 
     isSetupComplete,
     setupStep,
@@ -198,7 +362,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setBaselineHeartRate,
     setBaselineVoiceSpeed,
     setBaselineVoiceTone,
-    setBaselineVoiceAccent
+    setBaselineVoiceAccent,
+    
+    assessments,
+    currentAssessmentData,
+    lastAssessmentTime,
   };
   
   return (

@@ -12,6 +12,15 @@ const AppContent: React.FC = () => {
     if (!isSetupComplete) {
       startSetup();
     }
+
+    // Simulate page visibility events for background processing
+    const handleVisibilityChange = () => {
+      console.log(`App visibility changed: ${document.visibilityState}`);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isSetupComplete, startSetup]);
 
   return (

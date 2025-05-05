@@ -5,10 +5,14 @@ import HeartRateMonitor from './HeartRateMonitor';
 import SpeechMonitor from './SpeechMonitor';
 import SettingsDialog from './SettingsDialog';
 import SetupWizard from './SetupWizard';
+import AssessmentsDisplay from './AssessmentsDisplay';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Clock, BarChart2 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { isSetupComplete, startSetup } = useMonitoring();
+  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode } = useMonitoring();
 
   if (!isSetupComplete) {
     return <SetupWizard />;
@@ -19,6 +23,28 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <HeartRateMonitor />
         <SpeechMonitor />
+      </div>
+      
+      <div className="mb-8 bg-card shadow-sm rounded-lg p-4 border">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <Clock className="mr-2 h-5 w-5 text-muted-foreground" />
+            <h3 className="font-medium">Hourly Assessment</h3>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="background-mode" className="text-sm">Run in background</Label>
+            <Switch 
+              id="background-mode" 
+              checked={runInBackground} 
+              onCheckedChange={toggleBackgroundMode}
+            />
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          The app collects data continuously and provides hourly assessments of your heart rate
+          and speech patterns. You'll receive a notification after each assessment.
+        </p>
+        <AssessmentsDisplay />
       </div>
       
       <div className="flex justify-center gap-4 flex-wrap">
