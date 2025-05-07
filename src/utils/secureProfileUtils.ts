@@ -22,6 +22,7 @@ export const shouldEncryptField = (fieldName: string): boolean => {
  * Securely store profile data with selective field encryption
  */
 export const secureStoreProfile = async (profile: ProfileData): Promise<ProfileData> => {
+  // Create a new object to avoid mutating the original
   const securedProfile = { ...profile };
   
   // Encrypt sensitive fields
@@ -29,9 +30,9 @@ export const secureStoreProfile = async (profile: ProfileData): Promise<ProfileD
     if (securedProfile[field] !== null && securedProfile[field] !== undefined) {
       try {
         // Store the field as an encrypted string
-        const encryptedValue = await encryptData(securedProfile[field]);
-        // Add a prefix to identify encrypted fields
-        securedProfile[field] = `ENC:${encryptedValue}` as any as typeof securedProfile[typeof field];
+        const encryptedValue = await encryptData(String(securedProfile[field]));
+        // Add a prefix to identify encrypted fields and use proper casting for TypeScript
+        securedProfile[field] = `ENC:${encryptedValue}` as unknown as typeof securedProfile[typeof field];
       } catch (error) {
         console.error(`Failed to encrypt ${field}:`, error);
         // If encryption fails, we keep the original value
@@ -58,8 +59,16 @@ export const secureRetrieveProfile = async (profile: ProfileData): Promise<Profi
         // Extract encrypted part without prefix
         const encryptedValue = value.substring(4);
         // Decrypt the value
-        const decryptedValue = await decryptData(encryptedValue);
-        decryptedProfile[field] = decryptedValue as typeof decryptedProfile[typeof field];
+        const decryptedValue = await decryptData<string>(encryptedValue);
+        
+        // Handle type conversion based on field type
+        if (field === 'baselineHeartRateResting' || field === 'baselineHeartRateActive') {
+          // Convert string to number for numeric fields
+          decryptedProfile[field] = Number(decryptedValue) as unknown as typeof decryptedProfile[typeof field];
+        } else {
+          // For string fields, use as is
+          decryptedProfile[field] = decryptedValue as unknown as typeof decryptedProfile[typeof field];
+        }
       } catch (error) {
         console.error(`Failed to decrypt ${field}:`, error);
         // If decryption fails, we keep the encrypted value
