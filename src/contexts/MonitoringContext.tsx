@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage } from '../utils/monitoringUtils';
 import { determineEmotion, EmotionType } from '../utils/emotionUtils';
@@ -14,6 +15,8 @@ interface AssessmentData {
   primaryEmotion?: EmotionType;
   emotionDurations?: Record<EmotionType, number>; // Track how long each emotion was present
 }
+
+type EmergencyType = 'none' | 'heart' | 'speech' | 'both';
 
 interface MonitoringContextType {
   // Heart rate
@@ -67,6 +70,10 @@ interface MonitoringContextType {
   // Emotion tracking
   currentEmotion: EmotionType;
   emotionHistory: Record<EmotionType, number>;
+  
+  // Emergency state
+  currentEmergency: EmergencyType;
+  resolveEmergency: () => void;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
@@ -127,6 +134,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     bored: 0,
     neutral: 0
   });
+  
+  // Emergency state
+  const [currentEmergency, setCurrentEmergency] = useState<EmergencyType>('none');
   
   const { toast } = useToast();
   
@@ -238,6 +248,38 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     return () => clearInterval(emotionInterval);
   }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
+  
+  // Effect to detect emergency situations
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    // Check for emergency conditions
+    if (heartRateStatus === 'high' && heartRate > heartRateHighThreshold + 20) {
+      if (speechStatus === 'high' && speechPercentage > speechHighThreshold + 20) {
+        setCurrentEmergency('both');
+      } else {
+        setCurrentEmergency('heart');
+      }
+    } else if (speechStatus === 'high' && speechPercentage > speechHighThreshold + 30) {
+      setCurrentEmergency('speech');
+    }
+    
+    // Randomly trigger an emergency situation every once in a while for demo purposes
+    const randomEmergencyInterval = setInterval(() => {
+      const shouldTrigger = Math.random() < 0.05; // 5% chance every check
+      if (shouldTrigger && currentEmergency === 'none') {
+        const emergencyType: EmergencyType = Math.random() > 0.5 ? 'heart' : 'speech';
+        setCurrentEmergency(emergencyType);
+        
+        // Auto-resolve after 30 seconds
+        setTimeout(() => {
+          setCurrentEmergency('none');
+        }, 30000);
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(randomEmergencyInterval);
+  }, [isSetupComplete, isMonitoring, heartRateStatus, speechStatus, heartRate, speechPercentage, heartRateHighThreshold, speechHighThreshold, currentEmergency]);
   
   // Update the hourly assessment effect to include emotion data
   useEffect(() => {
@@ -365,6 +407,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleMonitoring = () => setIsMonitoring(prev => !prev);
   const toggleTalking = () => setIsTalking(prev => !prev);
   const toggleBackgroundMode = () => setRunInBackground(prev => !prev);
+  const resolveEmergency = () => setCurrentEmergency('none');
   
   // Setup functions
   const startSetup = () => {
@@ -444,6 +487,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     currentEmotion,
     emotionHistory,
+    
+    currentEmergency,
+    resolveEmergency,
   };
   
   return (

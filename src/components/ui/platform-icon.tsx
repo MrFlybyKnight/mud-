@@ -2,7 +2,7 @@
 import React from 'react';
 import { usePlatformContext } from '@/contexts/PlatformContext';
 import { getPlatformIcons } from '@/utils/platformUtils';
-import { Apple, Android } from 'lucide-react';
+import { Apple, Smartphone } from 'lucide-react';
 
 export type IconSize = 'small' | 'medium' | 'large';
 
@@ -27,7 +27,7 @@ export const PlatformLogo: React.FC<PlatformIconProps> = ({
   }
   
   if (isAndroid) {
-    return <Android className={className} color={color} size={sizeValue} />;
+    return <Smartphone className={className} color={color} size={sizeValue} />;
   }
   
   // Default fallback shows both icons
@@ -35,7 +35,7 @@ export const PlatformLogo: React.FC<PlatformIconProps> = ({
     <div className="flex items-center">
       <Apple className={className} color={color} size={sizeValue} />
       <span className="mx-1">/</span>
-      <Android className={className} color={color} size={sizeValue} />
+      <Smartphone className={className} color={color} size={sizeValue} />
     </div>
   );
 };
