@@ -1,8 +1,8 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useMonitoring } from '@/contexts/MonitoringContext';
-import { Mic, MicOff } from 'lucide-react';
-import Heart from 'lucide-react';
+import { Mic, MicOff, Heart } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const Header: React.FC = () => {
