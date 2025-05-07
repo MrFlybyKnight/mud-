@@ -1,0 +1,254 @@
+
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { useMonitoring } from './MonitoringContext';
+import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, sendWatchNotification } from '@/utils/notificationUtils';
+import { useProfile } from './ProfileContext';
+
+interface NotificationContextType {
+  notifications: NotificationData[];
+  unreadCount: number;
+  lastNotification: NotificationData | null;
+  sendTestNotification: (type?: 'heart' | 'speech' | 'emotion' | 'general') => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  clearNotification: (id: string) => void;
+  clearAllNotifications: () => void;
+}
+
+export const NotificationContext = createContext<NotificationContextType | null>(null);
+
+export const useNotification = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotification must be used within a NotificationProvider');
+  }
+  return context;
+};
+
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
+  const [lastNotification, setLastNotification] = useState<NotificationData | null>(null);
+  const lastHeartNotificationTime = useRef<Date | null>(null);
+  const lastSpeechNotificationTime = useRef<Date | null>(null);
+  const lastEmotionNotificationTime = useRef<Date | null>(null);
+  const lastWellnessNotificationTime = useRef<Date | null>(null);
+  const emotionDurationRef = useRef<Record<string, number>>({});
+  
+  const { toast } = useToast();
+  const { 
+    heartRate, 
+    heartRateStatus, 
+    speechPercentage, 
+    speechStatus,
+    currentEmotion,
+    emotionHistory,
+    isSetupComplete,
+    isMonitoring
+  } = useMonitoring();
+  
+  const { currentProfile } = useProfile();
+  
+  // Calculate unread count
+  const unreadCount = notifications.filter(n => !n.read).length;
+  
+  // Process and add a new notification
+  const processNotification = async (notification: NotificationData | null) => {
+    if (!notification) return;
+    
+    // Don't add duplicate notifications within a short time period
+    const existingSimilar = notifications.find(n => 
+      n.type === notification.type && 
+      (new Date().getTime() - n.timestamp.getTime()) < (15 * 60 * 1000) // 15 minutes
+    );
+    
+    if (existingSimilar) return;
+    
+    // Update the notifications state
+    setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep only the most recent 50
+    setLastNotification(notification);
+    
+    // Show a toast for the notification
+    toast({
+      title: notification.title,
+      description: notification.message,
+      duration: 5000,
+    });
+    
+    // Attempt to send to watch
+    try {
+      const sent = await sendWatchNotification(notification);
+      if (!sent) {
+        console.warn('Failed to send notification to watch:', notification.id);
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
+  
+  // Effect to check heart rate and send notifications
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    // Only check every 30 seconds to avoid too many notifications
+    const checkInterval = setInterval(() => {
+      // Don't send too many heart rate notifications
+      if (lastHeartNotificationTime.current && 
+          (new Date().getTime() - lastHeartNotificationTime.current.getTime()) < (10 * 60 * 1000)) {
+        return;
+      }
+      
+      const notification = getHeartRateSuggestion(heartRate, heartRateStatus);
+      
+      if (notification) {
+        processNotification(notification);
+        lastHeartNotificationTime.current = new Date();
+      }
+    }, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(checkInterval);
+  }, [heartRate, heartRateStatus, isSetupComplete, isMonitoring]);
+  
+  // Effect to check speech patterns and send notifications
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    const checkInterval = setInterval(() => {
+      // Don't send too many speech notifications
+      if (lastSpeechNotificationTime.current && 
+          (new Date().getTime() - lastSpeechNotificationTime.current.getTime()) < (15 * 60 * 1000)) {
+        return;
+      }
+      
+      const notification = getSpeechSuggestion(speechPercentage, speechStatus);
+      
+      if (notification) {
+        processNotification(notification);
+        lastSpeechNotificationTime.current = new Date();
+      }
+    }, 45000); // Check every 45 seconds
+    
+    return () => clearInterval(checkInterval);
+  }, [speechPercentage, speechStatus, isSetupComplete, isMonitoring]);
+  
+  // Effect to track emotion duration and send notifications
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    // Update the current emotion duration
+    if (currentEmotion) {
+      emotionDurationRef.current = {
+        ...emotionDurationRef.current,
+        [currentEmotion]: (emotionDurationRef.current[currentEmotion] || 0) + 3 // Increment by 3 seconds
+      };
+    }
+    
+    const checkInterval = setInterval(() => {
+      // Don't send too many emotion notifications
+      if (lastEmotionNotificationTime.current && 
+          (new Date().getTime() - lastEmotionNotificationTime.current.getTime()) < (20 * 60 * 1000)) {
+        return;
+      }
+      
+      if (currentEmotion && emotionDurationRef.current[currentEmotion]) {
+        const notification = getEmotionSuggestion(
+          currentEmotion, 
+          emotionDurationRef.current[currentEmotion]
+        );
+        
+        if (notification) {
+          processNotification(notification);
+          lastEmotionNotificationTime.current = new Date();
+        }
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(checkInterval);
+  }, [currentEmotion, emotionHistory, isSetupComplete, isMonitoring]);
+  
+  // Effect to send periodic wellness suggestions
+  useEffect(() => {
+    if (!isSetupComplete) return;
+    
+    const checkInterval = setInterval(() => {
+      const notification = getWellnessSuggestion(lastWellnessNotificationTime.current);
+      
+      if (notification) {
+        processNotification(notification);
+        lastWellnessNotificationTime.current = new Date();
+      }
+    }, 60 * 60 * 1000); // Check every hour
+    
+    return () => clearInterval(checkInterval);
+  }, [isSetupComplete]);
+  
+  // Send a test notification
+  const sendTestNotification = (type: 'heart' | 'speech' | 'emotion' | 'general' = 'general') => {
+    let notification: NotificationData | null = null;
+    
+    switch (type) {
+      case 'heart':
+        notification = getHeartRateSuggestion(110, 'high');
+        break;
+      case 'speech':
+        notification = getSpeechSuggestion(80, 'high', true);
+        break;
+      case 'emotion':
+        notification = getEmotionSuggestion('stressed', 300);
+        break;
+      default:
+        notification = getWellnessSuggestion(null);
+        break;
+    }
+    
+    if (notification) {
+      notification.id = `test-${Date.now()}`;
+      processNotification(notification);
+    }
+  };
+  
+  // Mark a notification as read
+  const markAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(notification => 
+        notification.id === id 
+          ? { ...notification, read: true } 
+          : notification
+      )
+    );
+  };
+  
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(notification => ({ ...notification, read: true }))
+    );
+  };
+  
+  // Clear a specific notification
+  const clearNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
+  
+  // Clear all notifications
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+  
+  return (
+    <NotificationContext.Provider 
+      value={{
+        notifications,
+        unreadCount,
+        lastNotification,
+        sendTestNotification,
+        markAsRead,
+        markAllAsRead,
+        clearNotification,
+        clearAllNotifications
+      }}
+    >
+      {children}
+    </NotificationContext.Provider>
+  );
+};

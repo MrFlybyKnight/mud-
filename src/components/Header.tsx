@@ -1,21 +1,23 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { Mic, MicOff } from 'lucide-react';
+import Heart from 'lucide-react';
+import NotificationCenter from './NotificationCenter';
 
 const Header: React.FC = () => {
   const { isMonitoring, toggleMonitoring, isTalking, toggleTalking } = useMonitoring();
 
   return (
-    <header className="pt-4 pb-6 px-4">
-      <div className="container max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2 text-center">Chatter Watch</h1>
-        <p className="text-muted-foreground text-center mb-6">
-          Smart monitoring for speech and heart rate
-        </p>
+    <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+      <div className="container max-w-6xl mx-auto flex h-14 items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <Heart className="h-6 w-6 text-red-500" />
+          <h1 className="text-lg font-bold">ChatterWatch</h1>
+        </div>
         
-        <div className="flex justify-center gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <NotificationCenter />
           <Button 
             onClick={toggleMonitoring}
             variant={isMonitoring ? "destructive" : "default"}

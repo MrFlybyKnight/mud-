@@ -1,34 +1,35 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ActivityProvider } from "./contexts/ActivityContext";
-import { PlatformProvider } from "./contexts/PlatformContext";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import Index from './pages/Index';
+import NotFound from './pages/NotFound';
+import { ProfileProvider } from './contexts/ProfileContext';
+import { MonitoringProvider } from './contexts/MonitoringContext';
+import { PlatformProvider } from './contexts/PlatformContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import WatchNotification from './components/WatchNotification';
+import './App.css';
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+const App = () => {
+  return (
+    <BrowserRouter>
       <PlatformProvider>
-        <ActivityProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </ActivityProvider>
+        <ProfileProvider>
+          <MonitoringProvider>
+            <NotificationProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <WatchNotification />
+              <Toaster />
+            </NotificationProvider>
+          </MonitoringProvider>
+        </ProfileProvider>
       </PlatformProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </BrowserRouter>
+  );
+};
 
 export default App;
