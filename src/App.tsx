@@ -8,26 +8,29 @@ import { ProfileProvider } from './contexts/ProfileContext';
 import { MonitoringProvider } from './contexts/MonitoringContext';
 import { PlatformProvider } from './contexts/PlatformContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import WatchNotification from './components/WatchNotification';
 import './App.css';
 
 const App = () => {
   return (
     <BrowserRouter>
-      <PlatformProvider>
-        <ProfileProvider>
-          <MonitoringProvider>
-            <NotificationProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <WatchNotification />
-              <Toaster />
-            </NotificationProvider>
-          </MonitoringProvider>
-        </ProfileProvider>
-      </PlatformProvider>
+      <ThemeProvider>
+        <PlatformProvider>
+          <ProfileProvider>
+            <MonitoringProvider>
+              <NotificationProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <WatchNotification />
+                <Toaster />
+              </NotificationProvider>
+            </MonitoringProvider>
+          </ProfileProvider>
+        </PlatformProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };
