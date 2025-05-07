@@ -10,6 +10,7 @@ import { PlatformProvider } from './contexts/PlatformContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FitnessProvider } from './contexts/FitnessContext';
+import { EncryptionProvider } from './contexts/EncryptionContext';
 import WatchNotification from './components/WatchNotification';
 import './App.css';
 
@@ -17,22 +18,24 @@ const App = () => {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <PlatformProvider>
-          <ProfileProvider>
-            <MonitoringProvider>
-              <NotificationProvider>
-                <FitnessProvider>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <WatchNotification />
-                  <Toaster />
-                </FitnessProvider>
-              </NotificationProvider>
-            </MonitoringProvider>
-          </ProfileProvider>
-        </PlatformProvider>
+        <EncryptionProvider>
+          <PlatformProvider>
+            <ProfileProvider>
+              <MonitoringProvider>
+                <NotificationProvider>
+                  <FitnessProvider>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                    <WatchNotification />
+                    <Toaster />
+                  </FitnessProvider>
+                </NotificationProvider>
+              </MonitoringProvider>
+            </ProfileProvider>
+          </PlatformProvider>
+        </EncryptionProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

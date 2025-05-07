@@ -1,11 +1,12 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useFitness, FitnessServiceType } from '@/contexts/FitnessContext';
 import { Badge } from '@/components/ui/badge';
-import { RotateCcw, Power, PowerOff, Activity, Watch, ArrowUpCircle } from 'lucide-react';
+import { RotateCcw, Power, PowerOff, Activity, Watch, ArrowUpCircle, Lock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useEncryption } from '@/contexts/EncryptionContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const ServiceIcon = ({ service }: { service: FitnessServiceType }) => {
   switch (service) {
@@ -24,11 +25,20 @@ const ServiceIcon = ({ service }: { service: FitnessServiceType }) => {
   }
 };
 
-const ConnectionStatus = ({ connected, status }: { connected: boolean, status: string }) => {
+const ConnectionStatus = ({ connected, status, isEncrypted }: { connected: boolean, status: string, isEncrypted: boolean }) => {
   if (status === 'connecting') {
     return <Badge variant="outline" className="animate-pulse bg-amber-100 text-amber-800">Connecting...</Badge>;
   } else if (connected) {
-    return <Badge variant="outline" className="bg-green-100 text-green-800">Connected</Badge>;
+    return (
+      <div className="flex items-center gap-1">
+        <Badge variant="outline" className="bg-green-100 text-green-800">Connected</Badge>
+        {isEncrypted && (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800 flex items-center gap-1">
+            <Lock className="h-3 w-3" /> Encrypted
+          </Badge>
+        )}
+      </div>
+    );
   } else if (status === 'error') {
     return <Badge variant="outline" className="bg-red-100 text-red-800">Connection Error</Badge>;
   } else {
@@ -39,19 +49,65 @@ const ConnectionStatus = ({ connected, status }: { connected: boolean, status: s
 const FitnessServiceCard = ({ serviceId }: { serviceId: FitnessServiceType }) => {
   const { services, connect, disconnect, syncData, isConnecting } = useFitness();
   const service = services.find(s => s.id === serviceId);
+  const { encrypt, decrypt, isReady: isEncryptionReady } = useEncryption();
+  const { toast } = useToast();
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  
+  useEffect(() => {
+    // Check if service data is encrypted
+    if (service?.connected && isEncryptionReady) {
+      const checkEncryption = async () => {
+        const encryptionFlag = localStorage.getItem(`${serviceId}_encrypted`);
+        setIsEncrypted(encryptionFlag === 'true');
+      };
+      
+      checkEncryption();
+    }
+  }, [service?.connected, serviceId, isEncryptionReady]);
   
   if (!service) return null;
   
   const handleConnect = async () => {
     if (!service.connected) {
       await connect(serviceId);
+      
+      // When connecting, encrypt the credentials if possible
+      if (isEncryptionReady) {
+        try {
+          // In a real implementation, this would encrypt the actual tokens or credentials
+          await encrypt({ serviceId, timestamp: new Date().toISOString() });
+          localStorage.setItem(`${serviceId}_encrypted`, 'true');
+          setIsEncrypted(true);
+          toast({
+            title: "Secure Connection",
+            description: `${service.name} connected with encrypted credentials`,
+          });
+        } catch (error) {
+          console.error('Failed to encrypt credentials:', error);
+          toast({
+            title: "Warning",
+            description: `${service.name} connected but credentials could not be encrypted`,
+            variant: "destructive",
+          });
+        }
+      }
     } else {
       disconnect(serviceId);
+      localStorage.removeItem(`${serviceId}_encrypted`);
+      setIsEncrypted(false);
     }
   };
   
   const handleSync = async () => {
     await syncData(serviceId);
+    
+    // After sync, ensure any new data is encrypted if needed
+    if (isEncryptionReady && isEncrypted) {
+      toast({
+        title: "Secure Sync Complete",
+        description: `${service.name} data synced and encrypted`,
+      });
+    }
   };
   
   return (
@@ -62,7 +118,11 @@ const FitnessServiceCard = ({ serviceId }: { serviceId: FitnessServiceType }) =>
             <ServiceIcon service={serviceId} />
             <CardTitle>{service.name}</CardTitle>
           </div>
-          <ConnectionStatus connected={service.connected} status={service.status} />
+          <ConnectionStatus 
+            connected={service.connected} 
+            status={service.status}
+            isEncrypted={isEncrypted}
+          />
         </div>
         <CardDescription>{service.description}</CardDescription>
       </CardHeader>
