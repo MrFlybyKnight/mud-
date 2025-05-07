@@ -9,6 +9,7 @@ import { MonitoringProvider } from './contexts/MonitoringContext';
 import { PlatformProvider } from './contexts/PlatformContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { FitnessProvider } from './contexts/FitnessContext';
 import WatchNotification from './components/WatchNotification';
 import './App.css';
 
@@ -20,12 +21,14 @@ const App = () => {
           <ProfileProvider>
             <MonitoringProvider>
               <NotificationProvider>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <WatchNotification />
-                <Toaster />
+                <FitnessProvider>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <WatchNotification />
+                  <Toaster />
+                </FitnessProvider>
               </NotificationProvider>
             </MonitoringProvider>
           </ProfileProvider>

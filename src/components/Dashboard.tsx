@@ -14,13 +14,14 @@ import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
 import ProfileSelector from './ProfileSelector';
 import AssessmentsDisplay from './AssessmentsDisplay';
+import FitnessTab from './FitnessTab';
 import { PlatformLogo } from '@/components/ui/platform-icon';
 import { platformClass } from '@/utils/platformUtils';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, BarChart2, AlertTriangle } from 'lucide-react';
+import { Clock, BarChart2, AlertTriangle, Activity } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency } = useMonitoring();
@@ -83,14 +84,18 @@ const Dashboard: React.FC = () => {
       </div>
       
       <Tabs defaultValue="assessments" className={tabsClass}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="assessments" className={tabsTriggerClass}>
             <Clock className="mr-2 h-5 w-5" />
             Assessments
           </TabsTrigger>
+          <TabsTrigger value="fitness" className={tabsTriggerClass}>
+            <Activity className="mr-2 h-5 w-5" />
+            Fitness
+          </TabsTrigger>
           <TabsTrigger value="emergency" className={tabsTriggerClass}>
             <AlertTriangle className="mr-2 h-5 w-5" />
-            Emergency Contacts
+            Emergency
           </TabsTrigger>
         </TabsList>
         
@@ -116,6 +121,10 @@ const Dashboard: React.FC = () => {
             </p>
             <AssessmentsDisplay />
           </div>
+        </TabsContent>
+
+        <TabsContent value="fitness" className="mt-4">
+          <FitnessTab />
         </TabsContent>
         
         <TabsContent value="emergency" className="mt-4">
