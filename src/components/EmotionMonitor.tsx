@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { determineEmotion, getEmotionColor, getEmotionFeedback } from '@/utils/emotionUtils';
-import { Happy, Angry, Smile, Heart, Meh } from 'lucide-react';
+import { Smile, AlertCircle, Heart, Frown, MessageSquare } from 'lucide-react';
 
 const EmotionMonitor: React.FC = () => {
   const { 
@@ -40,14 +40,14 @@ const EmotionMonitor: React.FC = () => {
     switch (detectedEmotion) {
       case 'excited':
       case 'focused':
-        return <Happy className="mr-2" color={emotionColor} size={24} />;
+        return <MessageSquare className="mr-2" color={emotionColor} size={24} />;
       case 'anxious':
       case 'stressed':
-        return <Angry className="mr-2" color={emotionColor} size={24} />;
+        return <AlertCircle className="mr-2" color={emotionColor} size={24} />;
       case 'calm':
         return <Smile className="mr-2" color={emotionColor} size={24} />;
       case 'bored':
-        return <Meh className="mr-2" color={emotionColor} size={24} />;
+        return <Frown className="mr-2" color={emotionColor} size={24} />;
       default:
         return <Heart className="mr-2" color={emotionColor} size={24} />;
     }
