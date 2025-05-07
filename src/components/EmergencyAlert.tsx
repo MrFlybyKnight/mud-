@@ -6,10 +6,12 @@ import { AlertTriangle, Phone } from 'lucide-react';
 import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { useProfile } from '@/contexts/ProfileContext';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
   const { resolveEmergency, manualSync } = useMonitoring();
+  const { currentProfile } = useProfile();
   
   const cardClass = platformClass(platform, {
     base: "border-red-500 bg-red-50 shadow-md animate-pulse",
@@ -18,7 +20,10 @@ const EmergencyAlert = () => {
   });
 
   const handleEmergencyCall = () => {
-    console.log('Emergency call initiated');
+    // Use user's phone or default to emergency services
+    const phoneToCall = currentProfile.phoneNumber || '911';
+    
+    console.log('Emergency call initiated to', phoneToCall);
     // In a real app, this would connect to emergency services
     
     // Sync data immediately during emergency

@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { UserRound, ChevronDown, Plus, Trash } from 'lucide-react';
+import { UserRound, ChevronDown, Plus, Trash, Phone } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const ProfileSelector: React.FC = () => {
@@ -99,6 +99,16 @@ const ProfileSelector: React.FC = () => {
                     <div className="flex justify-between">
                       <dt className="font-medium">Occupation:</dt>
                       <dd>{currentProfile.occupation}</dd>
+                    </div>
+                  )}
+
+                  {currentProfile.phoneNumber && (
+                    <div className="flex justify-between items-center">
+                      <dt className="font-medium">Phone:</dt>
+                      <dd className="flex items-center gap-2">
+                        {currentProfile.phoneNumber}
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                      </dd>
                     </div>
                   )}
                   

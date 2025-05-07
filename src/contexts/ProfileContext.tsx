@@ -9,6 +9,7 @@ export interface ProfileData {
   age: number | null;
   gender: string | null;
   occupation: string | null;
+  phoneNumber: string | null; // Added phone number field
   baselineHeartRateResting: number | null;
   baselineHeartRateActive: number | null;
   naturalSpeechRate: number | null; // words per minute
@@ -26,6 +27,7 @@ export const defaultProfile: ProfileData = {
   age: null,
   gender: null,
   occupation: null,
+  phoneNumber: null, // Added phone number field with null default value
   baselineHeartRateResting: null,
   baselineHeartRateActive: null,
   naturalSpeechRate: null,
