@@ -3,7 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { usePlatformContext } from '@/contexts/PlatformContext';
 import { getHeartRateColor, getHeartRateFeedback } from '@/utils/monitoringUtils';
+import { platformClass, getPlatformIcons } from '@/utils/platformUtils';
 import { Heart } from 'lucide-react';
 
 const HeartRateMonitor: React.FC = () => {
@@ -13,17 +15,33 @@ const HeartRateMonitor: React.FC = () => {
     isMonitoring
   } = useMonitoring();
   
+  const { platform } = usePlatformContext();
+  const { iconSize, iconStyle } = getPlatformIcons(platform);
+  
   const heartRateColor = getHeartRateColor(heartRateStatus);
   const feedback = getHeartRateFeedback(heartRateStatus);
+  
+  const cardClass = platformClass(platform, {
+    base: "shadow-md",
+    ios: "rounded-xl border border-gray-200",
+    android: "rounded-lg shadow-lg"
+  });
+  
+  const titleClass = platformClass(platform, {
+    base: "flex items-center text-lg",
+    ios: "font-medium",
+    android: "font-semibold"
+  });
 
   return (
-    <Card className="shadow-md">
+    <Card className={cardClass}>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center text-lg">
+        <CardTitle className={titleClass}>
           <Heart 
             className={`mr-2 ${isMonitoring ? 'pulse-animation' : ''}`} 
             color={heartRateColor}
-            size={24}
+            size={iconSize.medium}
+            strokeWidth={iconStyle.strokeWidth}
           />
           Heart Rate Monitor
         </CardTitle>
