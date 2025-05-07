@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { MonitoringProvider, useMonitoring } from '@/contexts/MonitoringContext';
+import { ProfileProvider } from '@/contexts/ProfileContext';
 import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 
@@ -40,9 +41,11 @@ const AppContent: React.FC = () => {
 
 const Index: React.FC = () => {
   return (
-    <MonitoringProvider>
-      <AppContent />
-    </MonitoringProvider>
+    <ProfileProvider>
+      <MonitoringProvider>
+        <AppContent />
+      </MonitoringProvider>
+    </ProfileProvider>
   );
 };
 

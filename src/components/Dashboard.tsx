@@ -1,10 +1,13 @@
 
 import React from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import HeartRateMonitor from './HeartRateMonitor';
 import SpeechMonitor from './SpeechMonitor';
 import SettingsDialog from './SettingsDialog';
 import SetupWizard from './SetupWizard';
+import ProfileSetup from './ProfileSetup';
+import ProfileSelector from './ProfileSelector';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -13,13 +16,22 @@ import { Clock, BarChart2 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode } = useMonitoring();
+  const { isProfileComplete } = useProfile();
 
+  // Show setup wizard if device calibration isn't complete
   if (!isSetupComplete) {
     return <SetupWizard />;
   }
 
+  // Show profile setup if no profile is configured
+  if (!isProfileComplete) {
+    return <ProfileSetup />;
+  }
+
   return (
     <div className="container max-w-4xl mx-auto px-4 mb-8">
+      <ProfileSelector />
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <HeartRateMonitor />
         <SpeechMonitor />
@@ -50,6 +62,7 @@ const Dashboard: React.FC = () => {
       <div className="flex justify-center gap-4 flex-wrap">
         <SettingsDialog />
         <Button variant="outline" onClick={startSetup}>Re-calibrate</Button>
+        <Button variant="outline" id="profile-setup" onClick={() => {}}>Edit Profile</Button>
       </div>
       
       <div className="mt-8 p-4 bg-accent rounded-lg">
