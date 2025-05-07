@@ -16,10 +16,10 @@ const EmotionMonitor: React.FC = () => {
     baselineVoiceSpeed,
   } = useMonitoring();
   
-  const { activeProfile } = useProfile();
+  const { currentProfile } = useProfile();
   
   // Use profile data if available or default to baselines
-  const userBaselineHeartRate = activeProfile?.baselineHeartRate || baselineHeartRate;
+  const userBaselineHeartRate = currentProfile?.baselineHeartRateResting || baselineHeartRate;
   const speechPatternTone = baselineVoiceTone;
   const speechVolume = baselineVoiceSpeed;
   
