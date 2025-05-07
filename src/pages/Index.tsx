@@ -6,7 +6,13 @@ import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 
 const AppContent: React.FC = () => {
-  const { isSetupComplete, startSetup, isMonitoring, toggleMonitoring } = useMonitoring();
+  const { 
+    isSetupComplete, 
+    startSetup, 
+    isMonitoring, 
+    toggleMonitoring,
+    manualSync
+  } = useMonitoring();
 
   useEffect(() => {
     // Start setup if it's not completed yet
@@ -18,16 +24,26 @@ const AppContent: React.FC = () => {
     if (!isMonitoring && isSetupComplete) {
       toggleMonitoring();
     }
+    
+    // Trigger initial sync when app loads
+    if (isSetupComplete) {
+      manualSync();
+    }
 
     // Simulate page visibility events for background processing
     const handleVisibilityChange = () => {
       console.log(`App visibility changed: ${document.visibilityState}`);
+      
+      // When page becomes visible again, trigger a sync
+      if (document.visibilityState === 'visible' && isSetupComplete) {
+        manualSync();
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isSetupComplete, startSetup, isMonitoring, toggleMonitoring]);
+  }, [isSetupComplete, startSetup, isMonitoring, toggleMonitoring, manualSync]);
 
   return (
     <div className="min-h-screen bg-background">

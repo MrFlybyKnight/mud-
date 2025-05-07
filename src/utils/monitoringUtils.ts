@@ -86,3 +86,50 @@ export const generateSpeechPercentage = (
   const newValue = currentPercentage + changeRate;
   return Math.max(0, Math.min(100, newValue));
 };
+
+/**
+ * User activity states for sync timing
+ */
+export type UserActivityState = 'idle' | 'active' | 'unknown';
+
+/**
+ * Sync data statuses
+ */
+export type SyncStatus = 'success' | 'failed' | 'in-progress' | 'none';
+
+/**
+ * Gets the ideal sync interval in milliseconds based on user activity
+ * @param activityState Current user activity state
+ * @returns Sync interval in milliseconds
+ */
+export const getSyncInterval = (activityState: UserActivityState): number => {
+  switch (activityState) {
+    case 'active': return 10 * 1000; // 10 seconds during active moments
+    case 'idle': return 30 * 60 * 1000; // 30 minutes during idle periods
+    default: return 15 * 60 * 1000; // 15 minutes for unknown state (fallback)
+  }
+};
+
+/**
+ * Gets the active sync duration in milliseconds
+ * @returns The active sync session duration (2 minutes)
+ */
+export const getActiveSyncDuration = (): number => {
+  return 2 * 60 * 1000; // 2 minutes
+};
+
+/**
+ * Simulates a data sync operation
+ * @returns Promise that resolves with success/failure
+ */
+export const syncDataWithServer = async (data: any): Promise<boolean> => {
+  // Simulate API request time
+  await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+  
+  // 95% success rate for simulation
+  const isSuccess = Math.random() < 0.95;
+  
+  console.log(`Data sync ${isSuccess ? 'succeeded' : 'failed'}:`, data);
+  
+  return isSuccess;
+};

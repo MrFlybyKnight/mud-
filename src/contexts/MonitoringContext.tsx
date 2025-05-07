@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
-import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage } from '../utils/monitoringUtils';
+import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage, UserActivityState, SyncStatus, getSyncInterval, getActiveSyncDuration, syncDataWithServer } from '../utils/monitoringUtils';
 import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -74,6 +74,13 @@ interface MonitoringContextType {
   // Emergency state
   currentEmergency: EmergencyType;
   resolveEmergency: () => void;
+  
+  // Data synchronization
+  lastSyncTime: Date | null;
+  syncStatus: SyncStatus;
+  userActivityState: UserActivityState;
+  activeSyncEndTime: Date | null;
+  manualSync: () => Promise<void>;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
@@ -138,6 +145,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Emergency state
   const [currentEmergency, setCurrentEmergency] = useState<EmergencyType>('none');
   
+  // Sync state
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('none');
+  const [userActivityState, setUserActivityState] = useState<UserActivityState>('idle');
+  const [activeSyncEndTime, setActiveSyncEndTime] = useState<Date | null>(null);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const { toast } = useToast();
   
   // Derived status
@@ -146,17 +160,192 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Reference to track if the app is in foreground
   const isAppForeground = useRef<boolean>(true);
+  const userLastActiveTime = useRef<number>(Date.now());
+  const ACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutes of inactivity to be considered idle
 
   // Effect to handle visibility changes (simulate background mode)
   useEffect(() => {
     const handleVisibilityChange = () => {
       isAppForeground.current = document.visibilityState === 'visible';
+      
+      // If app becomes visible again, mark as active
+      if (isAppForeground.current) {
+        updateUserActivity();
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
+  
+  // Monitor user activity
+  useEffect(() => {
+    const updateActivity = () => {
+      updateUserActivity();
+    };
+    
+    // Listen for user interactions
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('touchstart', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+    
+    // Check for inactivity every minute
+    const inactivityCheckInterval = setInterval(() => {
+      const now = Date.now();
+      if (now - userLastActiveTime.current > ACTIVITY_TIMEOUT) {
+        setUserActivityState('idle');
+      }
+    }, 60000);
+    
+    return () => {
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('touchstart', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      clearInterval(inactivityCheckInterval);
+    };
+  }, []);
+
+  // Update user active timestamp and state
+  const updateUserActivity = () => {
+    userLastActiveTime.current = Date.now();
+    
+    // Only change to active if not already active
+    if (userActivityState !== 'active') {
+      setUserActivityState('active');
+      
+      // When user becomes active, schedule active sync period
+      const now = new Date();
+      setActiveSyncEndTime(new Date(now.getTime() + getActiveSyncDuration()));
+      
+      // If we're not already in a sync cycle, trigger one
+      if (syncTimeoutRef.current === null) {
+        scheduleSyncBasedOnActivity('active');
+      }
+    }
+  };
+  
+  // Data sync effect - handles the automatic sync scheduling 
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring) return;
+    
+    // Don't run if app is in background and background mode is disabled
+    if (!isAppForeground.current && !runInBackground) return;
+    
+    const now = new Date();
+    const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
+    const currentActivityState = isActiveSync ? 'active' : userActivityState;
+    
+    // Schedule sync based on activity state
+    scheduleSyncBasedOnActivity(currentActivityState);
+    
+    // Cleanup function to clear timeout on unmount or dependency change
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+    };
+  }, [
+    isSetupComplete, 
+    isMonitoring, 
+    runInBackground, 
+    userActivityState, 
+    lastSyncTime, 
+    activeSyncEndTime, 
+    syncStatus
+  ]);
+  
+  // Schedule data sync based on user activity state
+  const scheduleSyncBasedOnActivity = (activityState: UserActivityState) => {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+    
+    // Don't schedule if sync is in progress
+    if (syncStatus === 'in-progress') {
+      return;
+    }
+    
+    const interval = getSyncInterval(activityState);
+    
+    syncTimeoutRef.current = setTimeout(async () => {
+      // Check if we should still be in active sync mode
+      const now = new Date();
+      const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
+      
+      if (activityState === 'active' && !isActiveSync) {
+        // If we were active but active sync period has ended
+        setActiveSyncEndTime(null);
+        scheduleSyncBasedOnActivity('idle'); // Switch to idle sync interval
+        return;
+      }
+      
+      // Execute the sync
+      await performSync();
+      
+      // Reschedule next sync
+      syncTimeoutRef.current = null;
+      
+      // Check activity state again after sync
+      const stateAfterSync = activeSyncEndTime !== null && new Date() < activeSyncEndTime 
+        ? 'active' 
+        : userActivityState;
+      scheduleSyncBasedOnActivity(stateAfterSync);
+    }, interval);
+  };
+
+  // Perform the actual sync operation
+  const performSync = async () => {
+    if (syncStatus === 'in-progress') return;
+    
+    setSyncStatus('in-progress');
+    
+    try {
+      // Prepare data payload for sync
+      const syncData = {
+        timestamp: new Date(),
+        heartRate,
+        speechPercentage,
+        currentEmotion,
+        assessments: assessments.filter(a => !a.timestamp || 
+          (lastSyncTime && a.timestamp > lastSyncTime))
+      };
+      
+      const success = await syncDataWithServer(syncData);
+      
+      if (success) {
+        setSyncStatus('success');
+        setLastSyncTime(new Date());
+        toast({
+          title: "Data Synchronized",
+          description: `Last sync: ${format(new Date(), 'h:mm:ss a')}`,
+          duration: 2000,
+        });
+      } else {
+        setSyncStatus('failed');
+        toast({
+          title: "Sync Failed",
+          description: "Couldn't synchronize data with the server.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Sync error:", error);
+      setSyncStatus('failed');
+    }
+  };
+
+  // Manual sync function exposed through context
+  const manualSync = async () => {
+    await performSync();
+  };
 
   // Simulation effect for heart rate
   useEffect(() => {
@@ -439,6 +628,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
     setLastAssessmentTime(null);
     setIsMonitoring(true); // Start monitoring automatically after setup
+    
+    // Initialize sync
+    setLastSyncTime(null);
+    setSyncStatus('none');
+    scheduleSyncBasedOnActivity('idle');
   };
 
   const nextSetupStep = () => {
@@ -490,6 +684,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     currentEmergency,
     resolveEmergency,
+    
+    // Add sync properties
+    lastSyncTime,
+    syncStatus,
+    userActivityState,
+    activeSyncEndTime,
+    manualSync
   };
   
   return (

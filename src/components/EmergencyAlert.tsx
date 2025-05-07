@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, Phone } from 'lucide-react';
 import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
+import { useMonitoring } from '@/contexts/MonitoringContext';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
+  const { resolveEmergency, manualSync } = useMonitoring();
   
   const cardClass = platformClass(platform, {
     base: "border-red-500 bg-red-50 shadow-md animate-pulse",
@@ -18,6 +20,17 @@ const EmergencyAlert = () => {
   const handleEmergencyCall = () => {
     console.log('Emergency call initiated');
     // In a real app, this would connect to emergency services
+    
+    // Sync data immediately during emergency
+    manualSync();
+  };
+  
+  const handleDismiss = () => {
+    // Clear the emergency state
+    resolveEmergency();
+    
+    // Also trigger a sync
+    manualSync();
   };
 
   return (
@@ -37,7 +50,7 @@ const EmergencyAlert = () => {
             <Phone className="h-4 w-4" />
             Call Emergency Services
           </Button>
-          <Button variant="outline">I'm Fine</Button>
+          <Button variant="outline" onClick={handleDismiss}>I'm Fine</Button>
         </div>
       </CardContent>
     </Card>
