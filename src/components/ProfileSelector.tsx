@@ -19,11 +19,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { UserRound, ChevronDown, Plus, Trash, Phone } from 'lucide-react';
+import { UserRound, ChevronDown, Plus, Trash, Phone, Shield, ShieldAlert } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const ProfileSelector: React.FC = () => {
-  const { profiles, currentProfile, switchProfile, deleteProfile, addProfile } = useProfile();
+  const { profiles, currentProfile, switchProfile, deleteProfile, addProfile, isSecureProfile } = useProfile();
 
   const handleCreateNewProfile = () => {
     addProfile({ name: `Profile ${profiles.length + 1}` });
@@ -67,7 +68,18 @@ const ProfileSelector: React.FC = () => {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Profile Details</DialogTitle>
+              <DialogTitle className="flex items-center justify-between">
+                Profile Details
+                {isSecureProfile ? (
+                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                    <Shield className="h-3 w-3 mr-1" /> Encrypted
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                    <ShieldAlert className="h-3 w-3 mr-1" /> Not Encrypted
+                  </Badge>
+                )}
+              </DialogTitle>
               <DialogDescription>
                 View and edit your current profile information
               </DialogDescription>

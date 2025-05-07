@@ -1,13 +1,16 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { useProfile } from '@/contexts/ProfileContext';
 import { ProfileData } from '@/contexts/ProfileContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { CircleFadingPlus, Bell, Heart, MessageCircle, Smile } from 'lucide-react';
+import { useSecureProfile } from '@/hooks/use-secure-profile';
+import { CircleFadingPlus, Bell, Heart, MessageCircle, Smile, Shield, ShieldAlert } from 'lucide-react';
 
 const SettingsDialog = () => {
   const { currentProfile, updateProfile } = useProfile();
@@ -19,8 +22,9 @@ const SettingsDialog = () => {
   const [phoneNumber, setPhoneNumber] = React.useState(currentProfile?.phoneNumber || '');
   
   const { clearAllNotifications, sendTestNotification } = useNotification();
+  const { isEncryptionReady, isProfileEncrypted, encryptProfile, decryptProfile } = useSecureProfile();
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const updatedProfileData: Partial<ProfileData> = {
@@ -37,6 +41,57 @@ const SettingsDialog = () => {
       title: "Profile Updated",
       description: "Your profile has been updated successfully.",
     });
+  };
+
+  const toggleEncryption = async (enabled: boolean) => {
+    if (!isEncryptionReady) {
+      toast({
+        title: "Encryption Not Available",
+        description: "The encryption system is not ready. Please try again later.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      let success = false;
+      
+      if (enabled) {
+        // Enable encryption
+        success = await encryptProfile();
+        if (success) {
+          toast({
+            title: "Encryption Enabled",
+            description: "Your profile data is now encrypted.",
+          });
+        }
+      } else {
+        // Disable encryption
+        success = await decryptProfile();
+        if (success) {
+          toast({
+            title: "Encryption Disabled",
+            description: "Your profile data is no longer encrypted.",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      if (!success) {
+        toast({
+          title: "Encryption Change Failed",
+          description: "Failed to change encryption settings. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling encryption:", error);
+      toast({
+        title: "Error",
+        description: "Failed to change encryption settings. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -85,6 +140,30 @@ const SettingsDialog = () => {
           </div>
           
           <div className="space-y-2">
+            <h4 className="font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Security Settings
+            </h4>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="text-sm font-medium">Profile Encryption</div>
+                <div className="text-xs text-muted-foreground">Encrypt sensitive personal information</div>
+              </div>
+              <Switch
+                checked={isProfileEncrypted}
+                onCheckedChange={toggleEncryption}
+                disabled={!isEncryptionReady}
+              />
+            </div>
+            {!isEncryptionReady && (
+              <div className="text-xs text-amber-600 flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Encryption system not ready. Please try again later.
+              </div>
+            )}
+          </div>
+          
+          <div className="space-y-2 pt-2">
             <h4 className="font-medium flex items-center gap-2">
               <Bell className="h-4 w-4" />
               Notification Settings

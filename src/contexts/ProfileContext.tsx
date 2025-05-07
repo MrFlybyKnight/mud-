@@ -1,6 +1,8 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { secureStoreProfile, secureRetrieveProfile, verifyProfileEncryption } from '@/utils/secureProfileUtils';
+import { useEncryption } from './EncryptionContext';
 
 // Define profile data structure
 export interface ProfileData {
@@ -46,6 +48,7 @@ interface ProfileContextType {
   updateProfile: (id: string, data: Partial<ProfileData>) => void;
   switchProfile: (id: string) => void;
   deleteProfile: (id: string) => void;
+  isSecureProfile: boolean;
 }
 
 export const ProfileContext = createContext<ProfileContextType | null>(null);
@@ -62,9 +65,100 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [profiles, setProfiles] = useState<ProfileData[]>([defaultProfile]);
   const [currentProfileId, setCurrentProfileId] = useState<string>(defaultProfile.id);
   const { toast } = useToast();
+  const { isReady } = useEncryption();
+  const [isSecureProfile, setIsSecureProfile] = useState<boolean>(false);
 
   // Get current profile
   const currentProfile = profiles.find(p => p.id === currentProfileId) || defaultProfile;
+
+  // Load profiles from localStorage on initial load
+  useEffect(() => {
+    const loadProfiles = async () => {
+      try {
+        const savedProfiles = localStorage.getItem('userProfiles');
+        
+        if (savedProfiles) {
+          const parsedProfiles: ProfileData[] = JSON.parse(savedProfiles);
+          
+          // If encryption is available, decrypt sensitive fields
+          if (isReady) {
+            const decryptedProfiles = await Promise.all(
+              parsedProfiles.map(async (profile) => {
+                try {
+                  return await secureRetrieveProfile(profile);
+                } catch (error) {
+                  console.error('Failed to decrypt profile', error);
+                  return profile;
+                }
+              })
+            );
+            
+            setProfiles(decryptedProfiles);
+            
+            // Check if the current profile is securely encrypted
+            const currentProfile = decryptedProfiles.find(p => p.id === currentProfileId);
+            if (currentProfile) {
+              setIsSecureProfile(verifyProfileEncryption(currentProfile));
+            }
+          } else {
+            setProfiles(parsedProfiles);
+          }
+          
+          // Set the current profile ID if it exists in loaded profiles
+          const savedCurrentId = localStorage.getItem('currentProfileId');
+          if (savedCurrentId && parsedProfiles.some(p => p.id === savedCurrentId)) {
+            setCurrentProfileId(savedCurrentId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load profiles', error);
+        toast({
+          title: "Error",
+          description: "Failed to load saved profiles.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    loadProfiles();
+  }, [isReady, toast]);
+
+  // Save profiles to localStorage whenever they change
+  useEffect(() => {
+    const saveProfiles = async () => {
+      try {
+        // If encryption is available, encrypt sensitive fields before saving
+        if (isReady) {
+          const securedProfiles = await Promise.all(
+            profiles.map(async (profile) => {
+              try {
+                return await secureStoreProfile(profile);
+              } catch (error) {
+                console.error('Failed to encrypt profile', error);
+                return profile;
+              }
+            })
+          );
+          
+          localStorage.setItem('userProfiles', JSON.stringify(securedProfiles));
+          
+          // Check if the current profile is securely encrypted
+          const currentProfile = securedProfiles.find(p => p.id === currentProfileId);
+          if (currentProfile) {
+            setIsSecureProfile(verifyProfileEncryption(currentProfile));
+          }
+        } else {
+          localStorage.setItem('userProfiles', JSON.stringify(profiles));
+        }
+        
+        localStorage.setItem('currentProfileId', currentProfileId);
+      } catch (error) {
+        console.error('Failed to save profiles', error);
+      }
+    };
+    
+    saveProfiles();
+  }, [profiles, currentProfileId, isReady]);
 
   // Check if profile has necessary data
   const isProfileComplete = Boolean(
@@ -153,6 +247,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateProfile,
     switchProfile,
     deleteProfile,
+    isSecureProfile,
   };
 
   return (

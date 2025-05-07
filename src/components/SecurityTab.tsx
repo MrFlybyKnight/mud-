@@ -3,12 +3,14 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EncryptionManager from '@/components/EncryptionManager';
 import { useEncryption } from '@/contexts/EncryptionContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, UserCheck, FileCheck } from 'lucide-react';
+import { ShieldCheck, UserCheck, FileCheck, Shield, UserCog } from 'lucide-react';
 
 const SecurityTab: React.FC = () => {
   const { isReady } = useEncryption();
+  const { isSecureProfile } = useProfile();
   
   return (
     <div className="space-y-4">
@@ -28,6 +30,51 @@ const SecurityTab: React.FC = () => {
         
         <TabsContent value="encryption" className="mt-4">
           <EncryptionManager />
+          
+          <Card className="mt-4">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <UserCog className="h-5 w-5 text-primary" />
+                <CardTitle>Profile Security Status</CardTitle>
+              </div>
+              <CardDescription>
+                Status of sensitive data encryption for your profile information
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Sensitive Data Encryption</div>
+                <Badge 
+                  variant={isSecureProfile ? "outline" : "secondary"}
+                  className={isSecureProfile ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}
+                >
+                  {isSecureProfile ? (
+                    <span className="flex items-center gap-1">
+                      <Shield className="h-3 w-3" /> Encrypted
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <Shield className="h-3 w-3" /> Not Encrypted
+                    </span>
+                  )}
+                </Badge>
+              </div>
+              
+              <div className="mt-4 text-sm text-muted-foreground">
+                {isSecureProfile ? (
+                  <p>
+                    Your sensitive profile data (including phone number, gender, occupation, and health metrics) is 
+                    currently encrypted using AES-GCM encryption. Your data is protected even when stored locally.
+                  </p>
+                ) : (
+                  <p>
+                    Your profile data is not currently encrypted. To encrypt sensitive information, ensure encryption is
+                    enabled in the Encryption Manager above and update your profile information.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="permissions" className="mt-4">
