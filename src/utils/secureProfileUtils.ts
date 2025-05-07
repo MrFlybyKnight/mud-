@@ -1,4 +1,3 @@
-
 import { ProfileData } from '@/contexts/ProfileContext';
 import { encryptData, decryptData } from './encryptionUtils';
 
@@ -31,8 +30,13 @@ export const secureStoreProfile = async (profile: ProfileData): Promise<ProfileD
       try {
         // Store the field as an encrypted string
         const encryptedValue = await encryptData(String(securedProfile[field]));
-        // Add a prefix to identify encrypted fields and use proper casting for TypeScript
-        securedProfile[field] = `ENC:${encryptedValue}` as unknown as typeof securedProfile[typeof field];
+        // Add a prefix to identify encrypted fields
+        // We need to use a type assertion that preserves the field's type in the ProfileData type
+        if (typeof securedProfile[field] === 'string' || 
+            typeof securedProfile[field] === 'number' ||
+            securedProfile[field] instanceof Date) {
+          securedProfile[field] = `ENC:${encryptedValue}` as any;
+        }
       } catch (error) {
         console.error(`Failed to encrypt ${field}:`, error);
         // If encryption fails, we keep the original value
@@ -64,10 +68,10 @@ export const secureRetrieveProfile = async (profile: ProfileData): Promise<Profi
         // Handle type conversion based on field type
         if (field === 'baselineHeartRateResting' || field === 'baselineHeartRateActive') {
           // Convert string to number for numeric fields
-          decryptedProfile[field] = Number(decryptedValue) as unknown as typeof decryptedProfile[typeof field];
+          decryptedProfile[field] = Number(decryptedValue) as any;
         } else {
           // For string fields, use as is
-          decryptedProfile[field] = decryptedValue as unknown as typeof decryptedProfile[typeof field];
+          decryptedProfile[field] = decryptedValue as any;
         }
       } catch (error) {
         console.error(`Failed to decrypt ${field}:`, error);
