@@ -4,6 +4,9 @@
  * Implements AES-GCM encryption using the Web Crypto API
  */
 
+// Polyfill for Buffer in the browser
+import { Buffer } from 'buffer';
+
 // Get encryption key from secure storage or generate a new one
 const getEncryptionKey = async (): Promise<CryptoKey> => {
   // Try to retrieve existing key from secure storage

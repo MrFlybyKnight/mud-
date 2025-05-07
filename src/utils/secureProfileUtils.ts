@@ -1,3 +1,4 @@
+
 import { ProfileData } from '@/contexts/ProfileContext';
 import { encryptData, decryptData } from './encryptionUtils';
 
@@ -30,7 +31,7 @@ export const secureStoreProfile = async (profile: ProfileData): Promise<ProfileD
         // Store the field as an encrypted string
         const encryptedValue = await encryptData(securedProfile[field]);
         // Add a prefix to identify encrypted fields
-        securedProfile[field] = `ENC:${encryptedValue}` as any;
+        securedProfile[field] = `ENC:${encryptedValue}` as any as typeof securedProfile[typeof field];
       } catch (error) {
         console.error(`Failed to encrypt ${field}:`, error);
         // If encryption fails, we keep the original value
@@ -58,7 +59,7 @@ export const secureRetrieveProfile = async (profile: ProfileData): Promise<Profi
         const encryptedValue = value.substring(4);
         // Decrypt the value
         const decryptedValue = await decryptData(encryptedValue);
-        decryptedProfile[field] = decryptedValue;
+        decryptedProfile[field] = decryptedValue as typeof decryptedProfile[typeof field];
       } catch (error) {
         console.error(`Failed to decrypt ${field}:`, error);
         // If decryption fails, we keep the encrypted value
