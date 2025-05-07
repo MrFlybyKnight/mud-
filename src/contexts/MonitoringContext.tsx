@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage } from '../utils/monitoringUtils';
+import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 
@@ -10,6 +11,8 @@ interface AssessmentData {
   averageSpeechPercentage: number;
   duration: number; // in minutes
   correlation: 'positive' | 'negative' | 'neutral';
+  primaryEmotion?: EmotionType;
+  emotionDurations?: Record<EmotionType, number>; // Track how long each emotion was present
 }
 
 interface MonitoringContextType {
@@ -60,6 +63,10 @@ interface MonitoringContextType {
     startTime: Date | null;
   };
   lastAssessmentTime: Date | null;
+  
+  // Emotion tracking
+  currentEmotion: EmotionType;
+  emotionHistory: Record<EmotionType, number>;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
@@ -108,6 +115,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     startTime: null,
   });
   const [lastAssessmentTime, setLastAssessmentTime] = useState<Date | null>(null);
+  
+  // Emotion tracking state
+  const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('neutral');
+  const [emotionHistory, setEmotionHistory] = useState<Record<EmotionType, number>>({
+    calm: 0,
+    excited: 0,
+    anxious: 0,
+    focused: 0,
+    stressed: 0,
+    bored: 0,
+    neutral: 0
+  });
   
   const { toast } = useToast();
   
@@ -190,7 +209,37 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(speechInterval);
   }, [isMonitoring, isTalking, speechPercentage, runInBackground, isSetupComplete]);
   
-  // Hourly assessment effect
+  // Effect to update emotion based on heart rate and speech
+  useEffect(() => {
+    if (!isMonitoring) return;
+    
+    // Only proceed if app is in foreground OR background running is enabled
+    if (!isAppForeground.current && !runInBackground) return;
+    
+    // Update emotion every 3 seconds
+    const emotionInterval = setInterval(() => {
+      const newEmotion = determineEmotion(
+        heartRate,
+        speechPercentage, 
+        baselineHeartRate > 0 ? baselineHeartRate : 75,
+        baselineVoiceTone,
+        baselineVoiceSpeed
+      );
+      
+      setCurrentEmotion(newEmotion);
+      
+      // Update emotion history - track seconds spent in each emotion
+      setEmotionHistory(prev => ({
+        ...prev,
+        [newEmotion]: (prev[newEmotion] || 0) + 3
+      }));
+      
+    }, 3000);
+    
+    return () => clearInterval(emotionInterval);
+  }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
+  
+  // Update the hourly assessment effect to include emotion data
   useEffect(() => {
     if (!isSetupComplete || !isMonitoring) return;
     
@@ -223,12 +272,25 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const durationMs = new Date().getTime() - currentAssessmentData.startTime.getTime();
       const durationMinutes = Math.round(durationMs / (1000 * 60));
       
+      // Determine primary emotion (the one with the most time)
+      let primaryEmotion: EmotionType = 'neutral';
+      let maxDuration = 0;
+      
+      Object.entries(emotionHistory).forEach(([emotion, duration]) => {
+        if (duration > maxDuration) {
+          maxDuration = duration;
+          primaryEmotion = emotion as EmotionType;
+        }
+      });
+      
       const newAssessment: AssessmentData = {
         timestamp: new Date(),
         averageHeartRate: Math.round(avgHeartRate),
         averageSpeechPercentage: Math.round(avgSpeechPercentage),
         duration: durationMinutes,
         correlation,
+        primaryEmotion,
+        emotionDurations: { ...emotionHistory }
       };
       
       setAssessments(prev => [...prev, newAssessment]);
@@ -238,7 +300,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const formattedTime = format(new Date(), 'h:mm a');
       toast({
         title: `Hourly Assessment (${formattedTime})`,
-        description: `Heart Rate: ${Math.round(avgHeartRate)} BPM | Speech: ${Math.round(avgSpeechPercentage)}% | Correlation: ${correlation}`,
+        description: `Heart Rate: ${Math.round(avgHeartRate)} BPM | Speech: ${Math.round(avgSpeechPercentage)}% | Primary Emotion: ${primaryEmotion}`,
         duration: 5000,
       });
       
@@ -247,6 +309,17 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         heartRateReadings: [],
         speechPercentageReadings: [],
         startTime: new Date(),
+      });
+      
+      // Reset emotion history
+      setEmotionHistory({
+        calm: 0,
+        excited: 0,
+        anxious: 0,
+        focused: 0,
+        stressed: 0,
+        bored: 0,
+        neutral: 0
       });
     };
     
@@ -260,7 +333,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         calculateAssessment();
       }
     };
-  }, [isSetupComplete, isMonitoring, currentAssessmentData, baselineHeartRate, toast]);
+  }, [isSetupComplete, isMonitoring, currentAssessmentData, baselineHeartRate, toast, emotionHistory]);
   
   // Alert effect when status changes
   useEffect(() => {
@@ -368,6 +441,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     assessments,
     currentAssessmentData,
     lastAssessmentTime,
+    
+    currentEmotion,
+    emotionHistory,
   };
   
   return (

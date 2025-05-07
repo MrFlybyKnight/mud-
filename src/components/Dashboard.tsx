@@ -4,6 +4,7 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import HeartRateMonitor from './HeartRateMonitor';
 import SpeechMonitor from './SpeechMonitor';
+import EmotionMonitor from './EmotionMonitor';
 import SettingsDialog from './SettingsDialog';
 import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
@@ -35,6 +36,10 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <HeartRateMonitor />
         <SpeechMonitor />
+      </div>
+
+      <div className="mb-8">
+        <EmotionMonitor />
       </div>
       
       <div className="mb-8 bg-card shadow-sm rounded-lg p-4 border">

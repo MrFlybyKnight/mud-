@@ -36,7 +36,27 @@ const AssessmentsDisplay: React.FC = () => {
                   Duration: {assessment.duration} min
                 </p>
               </div>
-              <CorrelationBadge correlation={assessment.correlation} />
+              <div className="flex flex-col gap-2 items-end">
+                <CorrelationBadge correlation={assessment.correlation} />
+                {assessment.primaryEmotion && (
+                  <Badge variant="outline" 
+                    className={`bg-${assessment.primaryEmotion === 'calm' ? 'green' : 
+                      assessment.primaryEmotion === 'excited' ? 'amber' :
+                      assessment.primaryEmotion === 'anxious' ? 'orange' :
+                      assessment.primaryEmotion === 'focused' ? 'blue' :
+                      assessment.primaryEmotion === 'stressed' ? 'red' :
+                      assessment.primaryEmotion === 'bored' ? 'purple' : 'slate'}-100 
+                      text-${assessment.primaryEmotion === 'calm' ? 'green' : 
+                      assessment.primaryEmotion === 'excited' ? 'amber' :
+                      assessment.primaryEmotion === 'anxious' ? 'orange' :
+                      assessment.primaryEmotion === 'focused' ? 'blue' :
+                      assessment.primaryEmotion === 'stressed' ? 'red' :
+                      assessment.primaryEmotion === 'bored' ? 'purple' : 'slate'}-800 capitalize`}
+                  >
+                    {assessment.primaryEmotion}
+                  </Badge>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mt-4">
