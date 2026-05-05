@@ -80,6 +80,38 @@ const SetupWizard: React.FC = () => {
 
   const [voiceBaseline, setVoiceBaseline] = useState<{ rate: number; tone: number } | null>(null);
 
+  const saveVoiceBaseline = async (rate: number, tone: number) => {
+    if (!user?.uid) {
+      toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, { rate, tone });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          baselineSpeechRate: rate,
+          baselineVoiceTone: tone,
+          baselineVoiceCalibrationAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setBaselineVoiceSpeed(rate);
+      setBaselineVoiceTone(tone);
+      toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
+      setCalibrationValue(0);
+      nextSetupStep();
+    } catch (e: any) {
+      const code = e?.code ?? 'unknown';
+      const message = e?.message ?? String(e);
+      console.error('[SetupWizard] Failed to save voice baseline:', { code, message, error: e });
+      toast({ title: 'Save failed', description: `${code}: ${message}`, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleNext = async () => {
     if (setupStep === 1) {
       if (!user?.uid) {
@@ -118,35 +150,7 @@ const SetupWizard: React.FC = () => {
     }
 
     if (setupStep === 2) {
-      if (!user?.uid) {
-        toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
-        return;
-      }
-      if (!voiceBaseline) return;
-      setIsSaving(true);
-      try {
-        console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, voiceBaseline);
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            baselineSpeechRate: voiceBaseline.rate,
-            baselineVoiceTone: voiceBaseline.tone,
-            baselineVoiceCalibrationAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-        setBaselineVoiceSpeed(voiceBaseline.rate);
-        setBaselineVoiceTone(voiceBaseline.tone);
-        toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
-        setCalibrationValue(0);
-        setVoiceBaseline(null);
-        nextSetupStep();
-      } catch (e) {
-        console.error('[SetupWizard] Failed to save voice baseline:', e);
-        toast({ title: 'Save failed', description: 'Could not save voice baseline. Please try again.', variant: 'destructive' });
-      } finally {
-        setIsSaving(false);
-      }
+      // Step 2 advances itself via VoiceSequenceCalibration's "Complete Calibration" button.
       return;
     }
 
@@ -190,8 +194,11 @@ const SetupWizard: React.FC = () => {
       case 2:
         return (
           <VoiceSequenceCalibration
-            onComplete={(rate, tone) => setVoiceBaseline({ rate, tone })}
-            result={voiceBaseline}
+            onFinalize={async (rate, tone) => {
+              setVoiceBaseline({ rate, tone });
+              await saveVoiceBaseline(rate, tone);
+            }}
+            isSaving={isSaving}
           />
         );
 
@@ -239,16 +246,18 @@ const SetupWizard: React.FC = () => {
           <div className="text-sm text-muted-foreground">
             {setupStep}/4 steps complete
           </div>
-          <Button
-            onClick={handleNext}
-            disabled={isCalibrating || isSaving || (setupStep === 2 ? !voiceBaseline : calibrationValue === 0)}
-          >
-            {isSaving ? 'Saving...' : setupStep < 4 ? (
-              <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-            ) : (
-              'Complete Setup'
-            )}
-          </Button>
+          {setupStep !== 2 && (
+            <Button
+              onClick={handleNext}
+              disabled={isCalibrating || isSaving || calibrationValue === 0}
+            >
+              {isSaving ? 'Saving...' : setupStep < 4 ? (
+                <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+              ) : (
+                'Complete Setup'
+              )}
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
@@ -373,71 +382,44 @@ const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({
 };
 
 interface VoiceSequenceCalibrationProps {
-  onComplete: (rate: number, tone: number) => void;
-  result: { rate: number; tone: number } | null;
+  onFinalize: (rate: number, tone: number) => void | Promise<void>;
+  isSaving: boolean;
 }
 
 const MIN_PHRASE_SECONDS = 8;
 const MAX_PHRASE_SECONDS = 15;
 
-const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onComplete, result }) => {
+const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onFinalize, isSaving }) => {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
 
   const total = calibrationSequence.length;
   const current = calibrationSequence[index];
+  const isLast = index === total - 1;
 
-  const advance = React.useCallback(() => {
-    setIndex((i) => {
-      const nextI = i + 1;
-      if (nextI >= total) {
-        const avgRate = Math.round(90 + Math.random() * 60);
-        const dominantTone = Math.round(40 + Math.random() * 60);
-        onComplete(avgRate, dominantTone);
-        return i;
-      }
-      return nextI;
-    });
+  const handleNextPhrase = React.useCallback(async () => {
+    if (isLast) {
+      const avgRate = Math.round(90 + Math.random() * 60);
+      const dominantTone = Math.round(40 + Math.random() * 60);
+      await onFinalize(avgRate, dominantTone);
+      return;
+    }
+    setIndex((i) => i + 1);
     setElapsed(0);
-  }, [total, onComplete]);
+  }, [isLast, onFinalize]);
 
   useEffect(() => {
-    if (!started || result) return;
+    if (!started) return;
     const t = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 1;
-        if (next >= MAX_PHRASE_SECONDS) {
-          advance();
-          return 0;
-        }
-        return next;
-      });
+      setElapsed((prev) => Math.min(prev + 1, MAX_PHRASE_SECONDS));
     }, 1000);
     return () => clearInterval(t);
-  }, [started, result, advance]);
+  }, [started, index]);
 
   const canAdvance = elapsed >= MIN_PHRASE_SECONDS;
   const secondsRemaining = Math.max(0, MAX_PHRASE_SECONDS - elapsed);
-  const overallProgress = result ? 100 : (index / total) * 100;
-
-  if (result) {
-    return (
-      <div className="space-y-6 py-4 text-center">
-        <Mic size={64} className="mx-auto text-primary" />
-        <h3 className="text-lg font-semibold">Voice Calibration Complete</h3>
-        <div className="space-y-1">
-          <div className="text-2xl font-bold">{result.rate} wpm</div>
-          <p className="text-muted-foreground">Average speech rate</p>
-        </div>
-        <div className="space-y-1">
-          <div className="text-2xl font-bold">{result.tone}</div>
-          <p className="text-muted-foreground">Dominant tone</p>
-        </div>
-        <p className="text-sm text-muted-foreground">Click Next to save your baseline.</p>
-      </div>
-    );
-  }
+  const overallProgress = (index / total) * 100;
 
   if (!started) {
     return (
@@ -445,8 +427,8 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onC
         <Mic size={64} className="mx-auto text-muted-foreground" />
         <h3 className="text-lg font-semibold">Voice Baseline Calibration</h3>
         <p className="text-muted-foreground">
-          You'll read {total} short phrases aloud, 5 seconds each. MūD will listen
-          and measure your speech rate and tone.
+          You'll read {total} short phrases aloud. MūD will listen and measure
+          your speech rate and tone. Take your time — at least 8 seconds per phrase.
         </p>
         <Button onClick={() => setStarted(true)}>Start Voice Calibration</Button>
       </div>
@@ -486,10 +468,14 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onC
         <Button
           size="lg"
           variant={canAdvance ? 'default' : 'outline'}
-          disabled={!canAdvance}
-          onClick={advance}
+          disabled={!canAdvance || isSaving}
+          onClick={handleNextPhrase}
         >
-          Next Phrase <ArrowRight className="ml-2 h-4 w-4" />
+          {isSaving
+            ? 'Saving...'
+            : isLast
+              ? 'Complete Calibration'
+              : <>Next Phrase <ArrowRight className="ml-2 h-4 w-4" /></>}
         </Button>
       </div>
     </div>
