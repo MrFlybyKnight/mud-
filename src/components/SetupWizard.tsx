@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Heart, Mic, TimerIcon, ArrowRight } from 'lucide-react';
+import { calibrationSequence } from '@/data/calibrationSequence';
 
 const SetupWizard: React.FC = () => {
   const { 
@@ -77,6 +78,8 @@ const SetupWizard: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const [voiceBaseline, setVoiceBaseline] = useState<{ rate: number; tone: number } | null>(null);
+
   const handleNext = async () => {
     if (setupStep === 1) {
       if (!user?.uid) {
@@ -111,6 +114,39 @@ const SetupWizard: React.FC = () => {
       return;
     }
 
+    if (setupStep === 2) {
+      if (!user?.uid) {
+        toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
+        return;
+      }
+      if (!voiceBaseline) return;
+      setIsSaving(true);
+      try {
+        console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, voiceBaseline);
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            baselineSpeechRate: voiceBaseline.rate,
+            baselineVoiceTone: voiceBaseline.tone,
+            baselineVoiceCalibrationAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        setBaselineVoiceSpeed(voiceBaseline.rate);
+        setBaselineVoiceTone(voiceBaseline.tone);
+        toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
+        setCalibrationValue(0);
+        setVoiceBaseline(null);
+        nextSetupStep();
+      } catch (e) {
+        console.error('[SetupWizard] Failed to save voice baseline:', e);
+        toast({ title: 'Save failed', description: 'Could not save voice baseline. Please try again.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     setCalibrationValue(0);
     if (setupStep < 4) {
       nextSetupStep();
@@ -135,6 +171,7 @@ const SetupWizard: React.FC = () => {
     }
   };
 
+
   const renderStepContent = () => {
     switch (setupStep) {
       case 1:
@@ -149,16 +186,12 @@ const SetupWizard: React.FC = () => {
         );
       case 2:
         return (
-          <VoiceCalibration 
-            type="speed"
-            isCalibrating={isCalibrating}
-            progress={progress}
-            secondsLeft={secondsLeft}
-            calibrationValue={calibrationValue}
-            startCalibration={startCalibration}
-            prompt="Please read the following text at your normal speaking speed: 'The quick brown fox jumps over the lazy dog. Weather today is sunny with a chance of clouds.'"
+          <VoiceSequenceCalibration
+            onComplete={(rate, tone) => setVoiceBaseline({ rate, tone })}
+            result={voiceBaseline}
           />
         );
+
       case 3:
         return (
           <VoiceCalibration 
@@ -205,7 +238,7 @@ const SetupWizard: React.FC = () => {
           </div>
           <Button
             onClick={handleNext}
-            disabled={isCalibrating || calibrationValue === 0 || isSaving}
+            disabled={isCalibrating || isSaving || (setupStep === 2 ? !voiceBaseline : calibrationValue === 0)}
           >
             {isSaving ? 'Saving...' : setupStep < 4 ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
@@ -332,6 +365,100 @@ const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({
           </Button>
         </div>
       )}
+    </div>
+  );
+};
+
+interface VoiceSequenceCalibrationProps {
+  onComplete: (rate: number, tone: number) => void;
+  result: { rate: number; tone: number } | null;
+}
+
+const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onComplete, result }) => {
+  const [started, setStarted] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(calibrationSequence[0].duration);
+
+  const total = calibrationSequence.length;
+  const current = calibrationSequence[index];
+
+  useEffect(() => {
+    if (!started || result) return;
+    const t = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev > 1) return prev - 1;
+        // advance phrase
+        setIndex((i) => {
+          const nextI = i + 1;
+          if (nextI >= total) {
+            // measure averages (simulated)
+            const avgRate = Math.round(90 + Math.random() * 60); // words/min
+            const dominantTone = Math.round(40 + Math.random() * 60);
+            onComplete(avgRate, dominantTone);
+            return i;
+          }
+          setSecondsLeft(calibrationSequence[nextI].duration);
+          return nextI;
+        });
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [started, result, total, onComplete]);
+
+  const overallProgress = result
+    ? 100
+    : ((index * current.duration + (current.duration - secondsLeft)) / (total * current.duration)) * 100;
+
+  if (result) {
+    return (
+      <div className="space-y-6 py-4 text-center">
+        <Mic size={64} className="mx-auto text-primary" />
+        <h3 className="text-lg font-semibold">Voice Calibration Complete</h3>
+        <div className="space-y-1">
+          <div className="text-2xl font-bold">{result.rate} wpm</div>
+          <p className="text-muted-foreground">Average speech rate</p>
+        </div>
+        <div className="space-y-1">
+          <div className="text-2xl font-bold">{result.tone}</div>
+          <p className="text-muted-foreground">Dominant tone</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Click Next to save your baseline.</p>
+      </div>
+    );
+  }
+
+  if (!started) {
+    return (
+      <div className="space-y-6 py-4 text-center">
+        <Mic size={64} className="mx-auto text-muted-foreground" />
+        <h3 className="text-lg font-semibold">Voice Baseline Calibration</h3>
+        <p className="text-muted-foreground">
+          You'll read {total} short phrases aloud, 5 seconds each. MūD will listen
+          and measure your speech rate and tone.
+        </p>
+        <Button onClick={() => setStarted(true)}>Start Voice Calibration</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 py-4">
+      <div className="flex justify-center">
+        <Mic size={48} className="text-blue-500 pulse-animation" />
+      </div>
+      <div className="text-center text-sm text-muted-foreground">
+        Phrase {index + 1} of {total} · {secondsLeft}s
+      </div>
+      <div className="text-center space-y-3 py-6">
+        <p className="text-2xl md:text-3xl font-semibold leading-snug px-4">
+          “{current.phrase}”
+        </p>
+        <p className="text-sm text-muted-foreground italic">
+          {current.targetRange}
+        </p>
+      </div>
+      <Progress value={overallProgress} max={100} className="h-2" />
     </div>
   );
 };
