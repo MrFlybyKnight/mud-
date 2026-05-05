@@ -54,6 +54,17 @@ const Header: React.FC = () => {
             )}
           </Button>
           <NotificationCenter />
+          {user ? (
+            <Button variant="outline" size="sm" onClick={() => logout()} disabled={authBusy}>
+              <LogOut className="mr-2 h-4 w-4" />
+              {user.email ?? 'Log out'}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleGoogle} disabled={authBusy}>
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign in with Google
+            </Button>
+          )}
           <Button 
             onClick={toggleMonitoring}
             variant={isMonitoring ? "destructive" : "default"}
