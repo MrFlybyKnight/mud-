@@ -369,4 +369,98 @@ const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({
   );
 };
 
+interface VoiceSequenceCalibrationProps {
+  onComplete: (rate: number, tone: number) => void;
+  result: { rate: number; tone: number } | null;
+}
+
+const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onComplete, result }) => {
+  const [started, setStarted] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(calibrationSequence[0].duration);
+
+  const total = calibrationSequence.length;
+  const current = calibrationSequence[index];
+
+  useEffect(() => {
+    if (!started || result) return;
+    const t = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev > 1) return prev - 1;
+        // advance phrase
+        setIndex((i) => {
+          const nextI = i + 1;
+          if (nextI >= total) {
+            // measure averages (simulated)
+            const avgRate = Math.round(90 + Math.random() * 60); // words/min
+            const dominantTone = Math.round(40 + Math.random() * 60);
+            onComplete(avgRate, dominantTone);
+            return i;
+          }
+          setSecondsLeft(calibrationSequence[nextI].duration);
+          return nextI;
+        });
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [started, result, total, onComplete]);
+
+  const overallProgress = result
+    ? 100
+    : ((index * current.duration + (current.duration - secondsLeft)) / (total * current.duration)) * 100;
+
+  if (result) {
+    return (
+      <div className="space-y-6 py-4 text-center">
+        <Mic size={64} className="mx-auto text-primary" />
+        <h3 className="text-lg font-semibold">Voice Calibration Complete</h3>
+        <div className="space-y-1">
+          <div className="text-2xl font-bold">{result.rate} wpm</div>
+          <p className="text-muted-foreground">Average speech rate</p>
+        </div>
+        <div className="space-y-1">
+          <div className="text-2xl font-bold">{result.tone}</div>
+          <p className="text-muted-foreground">Dominant tone</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Click Next to save your baseline.</p>
+      </div>
+    );
+  }
+
+  if (!started) {
+    return (
+      <div className="space-y-6 py-4 text-center">
+        <Mic size={64} className="mx-auto text-muted-foreground" />
+        <h3 className="text-lg font-semibold">Voice Baseline Calibration</h3>
+        <p className="text-muted-foreground">
+          You'll read {total} short phrases aloud, 5 seconds each. MūD will listen
+          and measure your speech rate and tone.
+        </p>
+        <Button onClick={() => setStarted(true)}>Start Voice Calibration</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 py-4">
+      <div className="flex justify-center">
+        <Mic size={48} className="text-blue-500 pulse-animation" />
+      </div>
+      <div className="text-center text-sm text-muted-foreground">
+        Phrase {index + 1} of {total} · {secondsLeft}s
+      </div>
+      <div className="text-center space-y-3 py-6">
+        <p className="text-2xl md:text-3xl font-semibold leading-snug px-4">
+          “{current.phrase}”
+        </p>
+        <p className="text-sm text-muted-foreground italic">
+          {current.targetRange}
+        </p>
+      </div>
+      <Progress value={overallProgress} max={100} className="h-2" />
+    </div>
+  );
+};
+
 export default SetupWizard;
