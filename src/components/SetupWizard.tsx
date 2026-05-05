@@ -346,35 +346,35 @@ const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({
       : 'Please read the text clearly, emphasizing pronunciation.';
   
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-6">
       <div className="flex justify-center">
-        <Mic size={64} className={`${isCalibrating ? 'text-blue-500 pulse-animation' : 'text-muted-foreground'}`} />
+        <Mic size={80} className={`${isCalibrating ? 'text-blue-500 pulse-animation' : 'text-muted-foreground'}`} />
       </div>
       
-      <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-muted-foreground">{description}</p>
+      <div className="text-center space-y-4">
+        <h3 className="text-2xl md:text-3xl font-semibold">{title}</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">{description}</p>
       </div>
       
       {isCalibrating ? (
-        <div className="space-y-4">
-          <div className="p-4 bg-accent rounded-lg text-sm">
+        <div className="space-y-6">
+          <div className="p-6 bg-accent rounded-lg text-xl md:text-2xl leading-relaxed text-center">
             {prompt}
           </div>
-          <div className="flex justify-center">
-            <TimerIcon className="mr-2" /> 
+          <div className="flex justify-center items-center text-xl">
+            <TimerIcon className="mr-2 h-6 w-6" /> 
             <span>{secondsLeft} seconds remaining</span>
           </div>
           <Progress value={progress} max={100} className="h-2" />
         </div>
       ) : calibrationValue > 0 ? (
         <div className="text-center space-y-2">
-          <div className="text-2xl font-bold">{calibrationValue}</div>
-          <p>Baseline {type} recorded</p>
+          <div className="text-4xl font-bold">{calibrationValue}</div>
+          <p className="text-lg">Baseline {type} recorded</p>
         </div>
       ) : (
         <div className="flex justify-center">
-          <Button onClick={startCalibration}>
+          <Button size="lg" className="text-lg" onClick={startCalibration}>
             Start Voice {type.charAt(0).toUpperCase() + type.slice(1)} Calibration
           </Button>
         </div>
