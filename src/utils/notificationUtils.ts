@@ -1,6 +1,8 @@
 
 import { EmotionType } from "./emotionUtils";
 import { StatusType } from "./monitoringUtils";
+import { db, auth } from "@/firebase/config";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 /**
  * Types of notification suggestions
