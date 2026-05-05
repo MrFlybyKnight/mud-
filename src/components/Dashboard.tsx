@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, BarChart2, AlertTriangle, Activity } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency } = useMonitoring();
+  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency, manualSync, syncStatus } = useMonitoring();
   const { isProfileComplete } = useProfile();
   const { platform, isIOS, isAndroid } = usePlatformContext();
 
