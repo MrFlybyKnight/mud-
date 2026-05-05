@@ -757,8 +757,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (isMonitoring) {
         calculateAssessment();
       }
-    };
-  }, [isSetupComplete, isMonitoring, currentAssessmentData, baselineHeartRate, toast, emotionHistory]);
+    // Hourly assessment timer removed — aggregation is now handled by the
+    // subcheck (20m) / checkpoint (60m) / dailySummary (24h) Firestore pipeline.
+    return () => {};
+  }, [isSetupComplete, isMonitoring]);
+  /* eslint-disable */
+  const _unusedAssessmentRefs = () => ({ currentAssessmentData, baselineHeartRate, emotionHistory });
+  /* eslint-enable */
   
   // Alert effect when status changes
   useEffect(() => {
