@@ -11,13 +11,22 @@ export interface ProfileData {
   age: number | null;
   gender: string | null;
   occupation: string | null;
-  phoneNumber: string | null; // Added phone number field
+  phoneNumber: string | null;
   baselineHeartRateResting: number | null;
   baselineHeartRateActive: number | null;
   naturalSpeechRate: number | null; // words per minute
   naturalSpeechVolume: number | null; // 0-100
-  baselineSpeechTone: string | null; // e.g., 'neutral', 'animated'
-  speechComplexityPreference: string | null; // e.g., 'simple', 'moderate', 'complex'
+  baselineSpeechTone: string | null;
+  speechComplexityPreference: string | null;
+  // Calibration data populated from the Setup Wizard. Read-only in Edit Profile;
+  // only updatable via Re-calibrate.
+  baselineHeartRate: number | null;
+  baselineHeartRateAt: Date | null;
+  baselineVoiceToneAverage: number | null;
+  baselineSpeechRate: number | null;
+  baselineAccentProfile: Record<string, number> | null;
+  baselineVoiceCalibrationAt: Date | null;
+  sigmaThreshold: number | null;
   createdAt: Date;
   lastUpdated: Date;
 }
@@ -29,13 +38,20 @@ export const defaultProfile: ProfileData = {
   age: null,
   gender: null,
   occupation: null,
-  phoneNumber: null, // Added phone number field with null default value
+  phoneNumber: null,
   baselineHeartRateResting: null,
   baselineHeartRateActive: null,
   naturalSpeechRate: null,
   naturalSpeechVolume: null,
   baselineSpeechTone: null,
   speechComplexityPreference: null,
+  baselineHeartRate: null,
+  baselineHeartRateAt: null,
+  baselineVoiceToneAverage: null,
+  baselineSpeechRate: null,
+  baselineAccentProfile: null,
+  baselineVoiceCalibrationAt: null,
+  sigmaThreshold: null,
   createdAt: new Date(),
   lastUpdated: new Date(),
 };
