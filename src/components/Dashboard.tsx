@@ -9,6 +9,8 @@ import SettingsDialog from './SettingsDialog';
 import EmergencyContactManager from './EmergencyContactManager';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
+import TrustedCircleOverlay from './TrustedCircleOverlay';
+import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -27,9 +29,9 @@ const Dashboard: React.FC = () => {
     toggleTalking,
   } = useMonitoring();
   const { isProfileComplete } = useProfile();
+  const { isActive: trustedActive, toggleActive: toggleTrusted } = useTrustedCircle();
 
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [trustedOpen, setTrustedOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
@@ -112,13 +114,22 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Hero: emotion + body heatmap */}
-        <section className="flex-1 min-h-0 rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col items-center justify-center">
+        {/* Hero: emotion + cow + trusted circle overlay */}
+        <section className="relative flex-1 min-h-0 rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col items-center justify-center">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current emotion</p>
           <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
             {currentEmotion}
           </h2>
-          <MoodCow emotion={currentEmotion} className="mt-2 h-full max-h-[42vh] w-auto" />
+          <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
+            <MoodCow
+              emotion={currentEmotion}
+              className={cn(
+                'h-full w-auto transition-transform duration-300 ease-out',
+                trustedActive ? 'scale-50' : 'scale-100',
+              )}
+            />
+            <TrustedCircleOverlay />
+          </div>
         </section>
 
         {/* Vitals row */}
@@ -162,7 +173,12 @@ const Dashboard: React.FC = () => {
         {/* Bottom row */}
         <nav className="shrink-0 grid grid-cols-3 gap-3 pb-1">
           <BottomButton icon={History} label="History" onClick={() => setHistoryOpen(true)} />
-          <BottomButton icon={Users} label="Trusted" onClick={() => setTrustedOpen(true)} />
+          <BottomButton
+            icon={Users}
+            label="Trusted"
+            onClick={toggleTrusted}
+            active={trustedActive}
+          />
           <BottomButton
             icon={Settings}
             label="Settings"
@@ -175,13 +191,6 @@ const Dashboard: React.FC = () => {
         <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
           <AssessmentsDisplay />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={trustedOpen} onOpenChange={setTrustedOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Trusted Circle</DialogTitle></DialogHeader>
-          <EmergencyContactManager />
         </DialogContent>
       </Dialog>
 
@@ -210,11 +219,17 @@ interface BottomButtonProps {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
+  active?: boolean;
 }
-const BottomButton: React.FC<BottomButtonProps> = ({ icon: Icon, label, onClick }) => (
+const BottomButton: React.FC<BottomButtonProps> = ({ icon: Icon, label, onClick, active }) => (
   <button
     onClick={onClick}
-    className="flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-800 bg-slate-900/40 py-2.5 text-slate-300 hover:bg-slate-800/60 transition-colors"
+    className={cn(
+      'flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 transition-colors',
+      active
+        ? 'border-teal-400/60 bg-teal-500/20 text-teal-200 hover:bg-teal-500/25'
+        : 'border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-800/60',
+    )}
   >
     <Icon className="h-5 w-5" />
     <span className="text-[11px]">{label}</span>
