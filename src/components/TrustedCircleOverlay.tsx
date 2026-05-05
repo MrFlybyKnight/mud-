@@ -137,6 +137,12 @@ const TrustedCircleOverlay: React.FC = () => {
 
   const current = openPosition ? contactByPosition[openPosition] : undefined;
 
+  const closeDialog = () => {
+    setOpenPosition(null);
+    setName('');
+    setPhone('');
+  };
+
   const openManualForm = (position: TrustedPosition, prefill?: { name?: string; phone?: string }) => {
     setOpenPosition(position);
     setName(prefill?.name ?? '');
