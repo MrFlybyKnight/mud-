@@ -205,9 +205,9 @@ const SetupWizard: React.FC = () => {
           </div>
           <Button
             onClick={handleNext}
-            disabled={isCalibrating || calibrationValue === 0}
+            disabled={isCalibrating || calibrationValue === 0 || isSaving}
           >
-            {setupStep < 4 ? (
+            {isSaving ? 'Saving...' : setupStep < 4 ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
             ) : (
               'Complete Setup'
