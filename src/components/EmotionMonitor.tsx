@@ -9,31 +9,33 @@ import { platformClass, getPlatformIcons } from '@/utils/platformUtils';
 import { Smile, AlertCircle, Heart, Frown, MessageSquare } from 'lucide-react';
 
 const EmotionMonitor: React.FC = () => {
-  const { 
-    heartRate, 
+  const {
+    heartRate,
     speechPercentage,
     isMonitoring,
     baselineHeartRate,
     baselineVoiceTone,
     baselineVoiceSpeed,
+    emotionStreak,
   } = useMonitoring();
-  
+
   const { currentProfile } = useProfile();
   const { platform } = usePlatformContext();
   const { iconSize, iconStyle } = getPlatformIcons(platform);
-  
+
   // Use profile data if available or default to baselines
   const userBaselineHeartRate = currentProfile?.baselineHeartRateResting || baselineHeartRate;
   const speechPatternTone = baselineVoiceTone;
   const speechVolume = baselineVoiceSpeed;
-  
+
   // Determine the emotion based on current metrics
   const detectedEmotion = determineEmotion(
-    heartRate, 
+    heartRate,
     speechPercentage,
     userBaselineHeartRate,
     speechPatternTone,
-    speechVolume
+    speechVolume,
+    emotionStreak
   );
   
   const emotionColor = getEmotionColor(detectedEmotion);
