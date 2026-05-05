@@ -377,41 +377,49 @@ interface VoiceSequenceCalibrationProps {
   result: { rate: number; tone: number } | null;
 }
 
+const MIN_PHRASE_SECONDS = 8;
+const MAX_PHRASE_SECONDS = 15;
+
 const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onComplete, result }) => {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(calibrationSequence[0].duration);
+  const [elapsed, setElapsed] = useState(0);
 
   const total = calibrationSequence.length;
   const current = calibrationSequence[index];
 
+  const advance = React.useCallback(() => {
+    setIndex((i) => {
+      const nextI = i + 1;
+      if (nextI >= total) {
+        const avgRate = Math.round(90 + Math.random() * 60);
+        const dominantTone = Math.round(40 + Math.random() * 60);
+        onComplete(avgRate, dominantTone);
+        return i;
+      }
+      return nextI;
+    });
+    setElapsed(0);
+  }, [total, onComplete]);
+
   useEffect(() => {
     if (!started || result) return;
     const t = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev > 1) return prev - 1;
-        // advance phrase
-        setIndex((i) => {
-          const nextI = i + 1;
-          if (nextI >= total) {
-            // measure averages (simulated)
-            const avgRate = Math.round(90 + Math.random() * 60); // words/min
-            const dominantTone = Math.round(40 + Math.random() * 60);
-            onComplete(avgRate, dominantTone);
-            return i;
-          }
-          setSecondsLeft(calibrationSequence[nextI].duration);
-          return nextI;
-        });
-        return prev;
+      setElapsed((prev) => {
+        const next = prev + 1;
+        if (next >= MAX_PHRASE_SECONDS) {
+          advance();
+          return 0;
+        }
+        return next;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [started, result, total, onComplete]);
+  }, [started, result, advance]);
 
-  const overallProgress = result
-    ? 100
-    : ((index * current.duration + (current.duration - secondsLeft)) / (total * current.duration)) * 100;
+  const canAdvance = elapsed >= MIN_PHRASE_SECONDS;
+  const secondsRemaining = Math.max(0, MAX_PHRASE_SECONDS - elapsed);
+  const overallProgress = result ? 100 : (index / total) * 100;
 
   if (result) {
     return (
@@ -446,22 +454,44 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onC
   }
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-8">
+      <div className="text-center text-sm font-medium text-muted-foreground tracking-wide uppercase">
+        Phrase {index + 1} of {total}
+      </div>
+      <Progress value={overallProgress} max={100} className="h-1.5" />
+
       <div className="flex justify-center">
-        <Mic size={48} className="text-blue-500 pulse-animation" />
+        <Mic size={40} className="text-blue-500 pulse-animation" />
       </div>
-      <div className="text-center text-sm text-muted-foreground">
-        Phrase {index + 1} of {total} · {secondsLeft}s
-      </div>
-      <div className="text-center space-y-3 py-6">
-        <p className="text-2xl md:text-3xl font-semibold leading-snug px-4">
+
+      <div className="text-center space-y-6 py-12 px-6">
+        <p className="text-3xl md:text-4xl font-semibold leading-relaxed tracking-tight">
           “{current.phrase}”
         </p>
         <p className="text-sm text-muted-foreground italic">
           {current.targetRange}
         </p>
       </div>
-      <Progress value={overallProgress} max={100} className="h-2" />
+
+      <div className="text-center space-y-2">
+        <div className="text-5xl font-light tabular-nums text-foreground">
+          {secondsRemaining}s
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {canAdvance ? 'Ready when you are' : `Listening… ${MIN_PHRASE_SECONDS - elapsed}s until you can continue`}
+        </p>
+      </div>
+
+      <div className="flex justify-center pt-4">
+        <Button
+          size="lg"
+          variant={canAdvance ? 'default' : 'outline'}
+          disabled={!canAdvance}
+          onClick={advance}
+        >
+          Next Phrase <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
