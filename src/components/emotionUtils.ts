@@ -54,4 +54,11 @@ const EMOTION_SIGNATURES: Record<string, EmotionThresholds> = {
   },
   calm: {
     hrChange: { min: -5, max: 5 },
-    hrvPattern:
+    hrvPattern: 'regular',
+    voicePitch: { min: -5, max: 5 },
+    speechRate: { min: -5, max: 5 },
+    volume: { min: -1, max: 1 },
+    temporalPattern: 'stable'
+  }
+};
+
