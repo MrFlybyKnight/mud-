@@ -240,99 +240,10 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
   
-  // Delay first sync after setup completes so AuthContext has time to resolve uid
-  const [syncReady, setSyncReady] = useState<boolean>(false);
-  useEffect(() => {
-    if (!isSetupComplete) {
-      setSyncReady(false);
-      return;
-    }
-    const t = setTimeout(() => setSyncReady(true), 5000);
-    return () => clearTimeout(t);
-  }, [isSetupComplete]);
-
-  // Auto-flush queued metrics when uid becomes available or connection is restored
-  useEffect(() => {
-    if (!uid) return;
-    flushQueue(uid).catch((e) => console.error('[performSync] auto-flush error', e));
-    const onOnline = () => {
-      console.log('[performSync] online event - flushing queue');
-      flushQueue(uid).catch((e) => console.error('[performSync] online flush error', e));
-    };
-    window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
-  }, [uid]);
-
-  // Data sync effect - handles the automatic sync scheduling
-  useEffect(() => {
-    if (!isSetupComplete || !isMonitoring || !syncReady) return;
-
-    // Don't run if app is in background and background mode is disabled
-    if (!isAppForeground.current && !runInBackground) return;
-
-    const now = new Date();
-    const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
-    const currentActivityState = isActiveSync ? 'active' : userActivityState;
-
-    // Schedule sync based on activity state
-    scheduleSyncBasedOnActivity(currentActivityState);
-
-    // Cleanup function to clear timeout on unmount or dependency change
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = null;
-      }
-    };
-  }, [
-    isSetupComplete,
-    isMonitoring,
-    runInBackground,
-    userActivityState,
-    lastSyncTime,
-    activeSyncEndTime,
-    syncStatus,
-    syncReady,
-  ]);
-  
-  // Schedule data sync based on user activity state
-  const scheduleSyncBasedOnActivity = (activityState: UserActivityState) => {
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = null;
-    }
-    
-    // Don't schedule if sync is in progress
-    if (syncStatus === 'in-progress') {
-      return;
-    }
-    
-    const interval = getSyncInterval(activityState);
-    
-    syncTimeoutRef.current = setTimeout(async () => {
-      // Check if we should still be in active sync mode
-      const now = new Date();
-      const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
-      
-      if (activityState === 'active' && !isActiveSync) {
-        // If we were active but active sync period has ended
-        setActiveSyncEndTime(null);
-        scheduleSyncBasedOnActivity('idle'); // Switch to idle sync interval
-        return;
-      }
-      
-      // Execute the sync
-      await performSync();
-      
-      // Reschedule next sync
-      syncTimeoutRef.current = null;
-      
-      // Check activity state again after sync
-      const stateAfterSync = activeSyncEndTime !== null && new Date() < activeSyncEndTime 
-        ? 'active' 
-        : userActivityState;
-      scheduleSyncBasedOnActivity(stateAfterSync);
-    }, interval);
+  // Automatic sync is disabled. Sync is only triggered manually via the
+  // "Sync to Firebase" button on the dashboard.
+  const scheduleSyncBasedOnActivity = (_activityState: UserActivityState) => {
+    // no-op: automatic scheduling disabled
   };
 
   // Perform the actual sync operation
