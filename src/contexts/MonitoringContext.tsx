@@ -4,6 +4,9 @@ import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentag
 import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { useAuth } from './AuthContext';
+import { addWatchMetric } from '../firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 // Define the assessment data structure
 interface AssessmentData {
@@ -153,6 +156,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { toast } = useToast();
+  const { uid } = useAuth();
   
   // Derived status
   const heartRateStatus = determineStatus(heartRate, heartRateLowThreshold, heartRateHighThreshold);
@@ -318,7 +322,24 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       };
       
       const success = await syncDataWithServer(syncData);
-      
+
+      // Persist real metrics to Firestore for the authenticated user
+      if (success && uid) {
+        try {
+          await addWatchMetric(uid, {
+            device: 'web-simulator',
+            recordedAt: Timestamp.fromDate(syncData.timestamp),
+            heartRate,
+            metadata: {
+              speechPercentage,
+              emotion: currentEmotion,
+            },
+          } as any);
+        } catch (e) {
+          console.error('Firestore write failed:', e);
+        }
+      }
+
       if (success) {
         setSyncStatus('success');
         setLastSyncTime(new Date());
