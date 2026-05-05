@@ -6,13 +6,12 @@ import ProfileSetup from './ProfileSetup';
 import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
 import SettingsDialog from './SettingsDialog';
-import AssessmentsDisplay from './AssessmentsDisplay';
+import HistoryScreen from './HistoryScreen';
 import EmergencyAlert from './EmergencyAlert';
 import EmotionTimelineBar from './EmotionTimelineBar';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
 const Dashboard: React.FC = () => {
@@ -32,8 +31,34 @@ const Dashboard: React.FC = () => {
   const { isActive: trustedActive, toggleActive: toggleTrusted } = useTrustedCircle();
 
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
-  const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  const closeAll = () => {
+    setHistoryOpen(false);
+    setSettingsOpen(false);
+    if (trustedActive) toggleTrusted();
+  };
+  const toggleHistory = () => {
+    if (historyOpen) { setHistoryOpen(false); return; }
+    setSettingsOpen(false);
+    if (trustedActive) toggleTrusted();
+    setHistoryOpen(true);
+  };
+  const toggleSettings = () => {
+    if (settingsOpen) { setSettingsOpen(false); return; }
+    setHistoryOpen(false);
+    if (trustedActive) toggleTrusted();
+    setSettingsOpen(true);
+  };
+  const toggleTrustedNav = () => {
+    // toggleTrusted already toggles; ensure other screens close when activating
+    if (!trustedActive) {
+      setHistoryOpen(false);
+      setSettingsOpen(false);
+    }
+    toggleTrusted();
+  };
 
   useEffect(() => {
     const onStart = () => {
@@ -175,38 +200,25 @@ const Dashboard: React.FC = () => {
 
         {/* Bottom row */}
         <nav className="shrink-0 grid grid-cols-3 gap-3 pb-1">
-          <BottomButton icon={History} label="History" onClick={() => setHistoryOpen(true)} />
+          <BottomButton icon={History} label="History" onClick={toggleHistory} active={historyOpen} />
           <BottomButton
             icon={Users}
             label="Trusted"
-            onClick={toggleTrusted}
+            onClick={toggleTrustedNav}
             active={trustedActive}
           />
           <BottomButton
             icon={Settings}
             label="Settings"
-            onClick={() => settingsTriggerRef.current?.click()}
+            onClick={toggleSettings}
+            active={settingsOpen}
           />
         </nav>
       </div>
 
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
-          <AssessmentsDisplay />
-        </DialogContent>
-      </Dialog>
+      {historyOpen && <HistoryScreen onBack={() => setHistoryOpen(false)} />}
 
-      {/* SettingsDialog renders its own trigger; mount it off-screen and click via ref. */}
-      <div
-        className="absolute -left-[9999px] top-0"
-        aria-hidden
-        ref={(el) => {
-          settingsTriggerRef.current = el?.querySelector('button') ?? null;
-        }}
-      >
-        <SettingsDialog />
-      </div>
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} hideTrigger />
 
       {profileSaving && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-4 py-2 text-xs text-slate-200 shadow-lg backdrop-blur animate-fade-in">
