@@ -4,6 +4,8 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { upsertUserProfile } from '@/firebase/firestore';
 import { useToast } from '@/components/ui/use-toast';
+import { db } from '@/firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -73,7 +75,42 @@ const SetupWizard: React.FC = () => {
     setSecondsLeft(setupStep === 1 ? 30 : 10);
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleNext = async () => {
+    if (setupStep === 1) {
+      if (!user?.uid) {
+        toast({
+          title: 'Not signed in',
+          description: 'Please sign in before continuing.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setIsSaving(true);
+      try {
+        console.log('[SetupWizard] Writing baselineHeartRate for uid:', user.uid, 'value:', calibrationValue);
+        await setDoc(
+          doc(db, 'users', user.uid),
+          { baselineHeartRate: calibrationValue, baselineHeartRateAt: serverTimestamp() },
+          { merge: true }
+        );
+        toast({ title: 'Baseline heart rate saved', description: `${calibrationValue} BPM saved to cloud.` });
+        setCalibrationValue(0);
+        nextSetupStep();
+      } catch (e) {
+        console.error('[SetupWizard] Failed to save baselineHeartRate:', e);
+        toast({
+          title: 'Save failed',
+          description: 'Could not save baseline heart rate. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     setCalibrationValue(0);
     if (setupStep < 4) {
       nextSetupStep();
@@ -168,9 +205,9 @@ const SetupWizard: React.FC = () => {
           </div>
           <Button
             onClick={handleNext}
-            disabled={isCalibrating || calibrationValue === 0}
+            disabled={isCalibrating || calibrationValue === 0 || isSaving}
           >
-            {setupStep < 4 ? (
+            {isSaving ? 'Saving...' : setupStep < 4 ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
             ) : (
               'Complete Setup'
