@@ -244,6 +244,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearTimeout(t);
   }, [isSetupComplete]);
 
+  // Auto-flush queued metrics when uid becomes available or connection is restored
+  useEffect(() => {
+    if (!uid) return;
+    flushQueue(uid).catch((e) => console.error('[performSync] auto-flush error', e));
+    const onOnline = () => {
+      console.log('[performSync] online event - flushing queue');
+      flushQueue(uid).catch((e) => console.error('[performSync] online flush error', e));
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [uid]);
+
   // Data sync effect - handles the automatic sync scheduling
   useEffect(() => {
     if (!isSetupComplete || !isMonitoring || !syncReady) return;
