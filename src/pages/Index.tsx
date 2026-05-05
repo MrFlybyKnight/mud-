@@ -8,16 +8,14 @@ import AuthForm from '@/components/AuthForm';
 const AppContent: React.FC = () => {
   const {
     isSetupComplete,
-    startSetup,
+    isSetupHydrating,
     isMonitoring,
     toggleMonitoring,
     manualSync
   } = useMonitoring();
 
   useEffect(() => {
-    if (!isSetupComplete) {
-      startSetup();
-    }
+    if (isSetupHydrating) return;
     if (!isMonitoring && isSetupComplete) {
       toggleMonitoring();
     }
@@ -33,7 +31,7 @@ const AppContent: React.FC = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isSetupComplete, startSetup, isMonitoring, toggleMonitoring, manualSync]);
+  }, [isSetupComplete, isSetupHydrating, isMonitoring, toggleMonitoring, manualSync]);
 
   return (
     <div className="min-h-screen bg-background">

@@ -5,7 +5,7 @@ import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
-import { addDoc, collection, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 // Define the assessment data structure
@@ -48,6 +48,7 @@ interface MonitoringContextType {
 
   // Setup and calibration
   isSetupComplete: boolean;
+  isSetupHydrating: boolean;
   setupStep: number;
   baselineHeartRate: number;
   baselineVoiceSpeed: number;
@@ -118,6 +119,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Setup and calibration state
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
+  const [isSetupHydrating, setIsSetupHydrating] = useState<boolean>(true);
   const [setupStep, setSetupStep] = useState<number>(0);
   const [baselineHeartRate, setBaselineHeartRate] = useState<number>(0);
   const [baselineVoiceSpeed, setBaselineVoiceSpeed] = useState<number>(0);
@@ -183,7 +185,48 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const userLastActiveTime = useRef<number>(Date.now());
   const ACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutes of inactivity to be considered idle
 
-  // Effect to handle visibility changes (simulate background mode)
+  // Hydrate setup-completion state from Firestore when user signs in.
+  // If baselineHeartRate AND baselineVoiceCalibrationAt exist, the user has
+  // already completed the wizard — skip it and go straight to dashboard.
+  useEffect(() => {
+    if (!uid) {
+      setIsSetupComplete(false);
+      setSetupStep(0);
+      setIsSetupHydrating(false);
+      return;
+    }
+    setIsSetupHydrating(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (cancelled) return;
+        const data = snap.data() as
+          | { baselineHeartRate?: number; baselineVoiceCalibrationAt?: unknown; baselineVoiceSpeed?: number; baselineVoiceTone?: number }
+          | undefined;
+        const hasHR = !!(data?.baselineHeartRate && data.baselineHeartRate > 0);
+        const hasVoice = !!data?.baselineVoiceCalibrationAt;
+        if (hasHR) setBaselineHeartRate(data!.baselineHeartRate!);
+        if (data?.baselineVoiceSpeed) setBaselineVoiceSpeed(data.baselineVoiceSpeed);
+        if (data?.baselineVoiceTone) setBaselineVoiceTone(data.baselineVoiceTone);
+        if (hasHR && hasVoice) {
+          console.log('[Setup] User already calibrated — skipping wizard');
+          setIsSetupComplete(true);
+          setSetupStep(0);
+        } else {
+          console.log('[Setup] User not yet calibrated — wizard will show', { hasHR, hasVoice });
+          setIsSetupComplete(false);
+        }
+      } catch (e) {
+        console.warn('[Setup] Failed to hydrate setup state from Firestore:', e);
+      } finally {
+        if (!cancelled) setIsSetupHydrating(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid]);
+
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       isAppForeground.current = document.visibilityState === 'visible';
@@ -840,6 +883,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     toggleBackgroundMode,
 
     isSetupComplete,
+    isSetupHydrating,
     setupStep,
     baselineHeartRate,
     baselineVoiceSpeed,

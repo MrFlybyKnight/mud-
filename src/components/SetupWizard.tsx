@@ -23,9 +23,15 @@ const SetupWizard: React.FC = () => {
     setBaselineHeartRate,
     setBaselineVoiceSpeed,
     setBaselineVoiceTone,
+    startSetup,
   } = useMonitoring();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Ensure the wizard begins at step 1 when shown.
+  useEffect(() => {
+    if (setupStep === 0) startSetup();
+  }, [setupStep, startSetup]);
 
   const [progress, setProgress] = useState(0);
   const [calibrationValue, setCalibrationValue] = useState(0);
