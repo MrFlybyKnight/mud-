@@ -1,179 +1,199 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
-import { usePlatformContext } from '@/contexts/PlatformContext';
-import HeartRateMonitor from './HeartRateMonitor';
-import SpeechMonitor from './SpeechMonitor';
-import EmotionMonitor from './EmotionMonitor';
-import ActivityMonitor from './ActivityMonitor';
-import EmergencyAlert from './EmergencyAlert';
-import EmergencyContactManager from './EmergencyContactManager';
-import SettingsDialog from './SettingsDialog';
 import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
-import ProfileSelector from './ProfileSelector';
+import BodyHeatmap from './BodyHeatmap';
+import NotificationCenter from './NotificationCenter';
+import SettingsDialog from './SettingsDialog';
+import EmergencyContactManager from './EmergencyContactManager';
 import AssessmentsDisplay from './AssessmentsDisplay';
-import FitnessTab from './FitnessTab';
-import { PlatformLogo } from '@/components/ui/platform-icon';
-import { platformClass } from '@/utils/platformUtils';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, BarChart2, AlertTriangle, Activity } from 'lucide-react';
+import EmergencyAlert from './EmergencyAlert';
+import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const Dashboard: React.FC = () => {
-  const { isSetupComplete, isSetupHydrating, startSetup, runInBackground, toggleBackgroundMode, currentEmergency, manualSync, syncStatus } = useMonitoring();
+  const {
+    isSetupComplete,
+    isSetupHydrating,
+    currentEmergency,
+    currentEmotion,
+    heartRate,
+    speechPercentage,
+    isMonitoring,
+    toggleMonitoring,
+    isTalking,
+    toggleTalking,
+  } = useMonitoring();
   const { isProfileComplete } = useProfile();
-  const { platform, isIOS, isAndroid } = usePlatformContext();
 
-  // While checking Firestore for existing calibration, show a brief loader to
-  // avoid flashing the wizard for already-calibrated users.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [trustedOpen, setTrustedOpen] = useState(false);
+  const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+
   if (isSetupHydrating) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <p className="text-muted-foreground">Loading…</p>
+      <div className="min-h-screen flex items-center justify-center bg-[hsl(222_47%_8%)]">
+        <p className="text-slate-400">Loading…</p>
       </div>
     );
   }
 
-  // Show setup wizard if device calibration isn't complete
-  if (!isSetupComplete) {
-    return <SetupWizard />;
-  }
+  if (!isSetupComplete) return <SetupWizard />;
+  if (!isProfileComplete) return <ProfileSetup />;
 
-  // Show profile setup if no profile is configured
-  if (!isProfileComplete) {
-    return <ProfileSetup />;
-  }
-  
-  // Platform-specific classes
-  const containerClass = platformClass(platform, {
-    base: "container max-w-4xl mx-auto px-4 mb-8",
-    ios: "pt-2",
-    android: "pt-4"
-  });
-  
-  const tabsClass = platformClass(platform, {
-    base: "mb-8",
-    ios: "rounded-xl overflow-hidden",
-    android: "rounded-md"
-  });
-  
-  const tabsTriggerClass = platformClass(platform, {
-    ios: "text-sm py-2",
-    android: "text-base py-2.5"
-  });
+  const status = !isMonitoring ? 'Paused' : isTalking ? 'Active' : 'Silent';
+  const statusColor =
+    status === 'Active'
+      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+      : status === 'Silent'
+      ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+      : 'bg-slate-500/15 text-slate-300 border-slate-500/30';
+
+  const cycleStatus = () => {
+    // Active -> Silent -> Paused -> Active
+    if (status === 'Active') {
+      toggleTalking(); // turn off talking → Silent
+    } else if (status === 'Silent') {
+      toggleMonitoring(); // pause
+    } else {
+      toggleMonitoring(); // resume → Silent
+    }
+  };
 
   return (
-    <div className={containerClass}>
-      <div className="flex items-center justify-between mb-4">
-        <ProfileSelector />
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <PlatformLogo size="small" />
-          <span className="text-xs font-medium capitalize">
-            {platform} mode
-          </span>
-        </div>
-      </div>
-      
-      {currentEmergency !== 'none' && (
-        <div className="my-6 animate-pulse">
-          <EmergencyAlert />
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <HeartRateMonitor />
-        <SpeechMonitor />
-      </div>
-
-      <div className="mb-8">
-        <EmotionMonitor />
-      </div>
-      
-      <Tabs defaultValue="assessments" className={tabsClass}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="assessments" className={tabsTriggerClass}>
-            <Clock className="mr-2 h-5 w-5" />
-            Assessments
-          </TabsTrigger>
-          <TabsTrigger value="fitness" className={tabsTriggerClass}>
-            <Activity className="mr-2 h-5 w-5" />
-            Fitness
-          </TabsTrigger>
-          <TabsTrigger value="emergency" className={tabsTriggerClass}>
-            <AlertTriangle className="mr-2 h-5 w-5" />
-            Emergency
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="assessments" className="mt-4">
-          <div className="bg-card shadow-sm rounded-lg p-4 border">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <Clock className="mr-2 h-5 w-5 text-muted-foreground" />
-                <h3 className="font-medium">Hourly Assessment</h3>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="background-mode" className="text-sm">Run in background</Label>
-                <Switch 
-                  id="background-mode" 
-                  checked={runInBackground} 
-                  onCheckedChange={toggleBackgroundMode}
-                />
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              The app collects data continuously and provides hourly assessments of your heart rate
-              and speech patterns. You'll receive a notification after each assessment.
-            </p>
-            <AssessmentsDisplay />
+    <div className="fixed inset-0 z-20 flex flex-col bg-[hsl(222_47%_8%)] text-slate-100 overflow-hidden">
+      <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 py-3 gap-3">
+        {/* Top bar */}
+        <header className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Heart className="h-5 w-5 text-rose-400" />
+            <span className="text-base font-semibold tracking-wide">MūD</span>
           </div>
-        </TabsContent>
+          <div className="flex items-center gap-1">
+            <NotificationCenter />
+            <button
+              onClick={toggleTalking}
+              aria-label={isTalking ? 'Mute microphone' : 'Enable microphone'}
+              className={cn(
+                'h-9 w-9 inline-flex items-center justify-center rounded-full border transition-colors',
+                isTalking
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                  : 'border-slate-700 bg-slate-800/60 text-slate-300'
+              )}
+            >
+              {isTalking ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+            </button>
+          </div>
+        </header>
 
-        <TabsContent value="fitness" className="mt-4">
-          <FitnessTab />
-        </TabsContent>
-        
-        <TabsContent value="emergency" className="mt-4">
-          <EmergencyContactManager />
-        </TabsContent>
-      </Tabs>
-      
-      <div className="flex justify-center gap-4 flex-wrap">
-        <Button
-          onClick={() => manualSync()}
-          disabled={syncStatus === 'in-progress'}
-        >
-          {syncStatus === 'in-progress' ? 'Syncing…' : 'Sync to Firebase'}
-        </Button>
-        <SettingsDialog />
-        <Button variant="outline" onClick={startSetup}>Re-calibrate</Button>
-        <Button variant="outline" id="profile-setup" onClick={() => {}}>Edit Profile</Button>
-      </div>
-      
-      <div className="mt-8 p-4 bg-accent rounded-lg">
-        <h2 className="font-semibold mb-2">How It Works</h2>
-        <p className="text-sm text-muted-foreground">
-          This app simulates smartwatch monitoring of your heart rate and speech patterns,
-          while tracking your daily activities. Your vital signs are analyzed within the context
-          of your current activity for more meaningful insights.
-        </p>
-        {(isIOS || isAndroid) && (
-          <div className="mt-2 pt-2 border-t border-border">
-            <div className="flex items-center">
-              <PlatformLogo className="mr-2" size="small" />
-              <p className="text-xs text-muted-foreground">
-                {isIOS ? 'iOS' : 'Android'} version optimized for your device
-              </p>
-            </div>
+        {currentEmergency !== 'none' && (
+          <div className="shrink-0">
+            <EmergencyAlert />
           </div>
         )}
+
+        {/* Hero: emotion + body heatmap */}
+        <section className="flex-1 min-h-0 rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col items-center justify-center">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current emotion</p>
+          <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
+            {currentEmotion}
+          </h2>
+          <BodyHeatmap emotion={currentEmotion} className="mt-2 h-full max-h-[42vh] w-auto" />
+        </section>
+
+        {/* Vitals row */}
+        <section className="grid grid-cols-2 gap-3 shrink-0">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Heart className="h-3.5 w-3.5 text-rose-400" /> Heart rate
+            </div>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-2xl font-semibold text-slate-50 tabular-nums">{heartRate}</span>
+              <span className="text-xs text-slate-400">BPM</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Activity className="h-3.5 w-3.5 text-sky-400" /> Speech
+            </div>
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-2xl font-semibold text-slate-50 tabular-nums">{speechPercentage}</span>
+              <span className="text-xs text-slate-400">%</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Status bar */}
+        <button
+          onClick={cycleStatus}
+          aria-label={`Monitoring mode: ${status}. Tap to change.`}
+          className={cn(
+            'shrink-0 w-full rounded-xl border px-4 py-2.5 flex items-center justify-between transition-colors',
+            statusColor
+          )}
+        >
+          <span className="flex items-center gap-2 text-sm font-medium">
+            {status === 'Paused' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {status}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider opacity-70">tap to toggle</span>
+        </button>
+
+        {/* Bottom row */}
+        <nav className="shrink-0 grid grid-cols-3 gap-3 pb-1">
+          <BottomButton icon={History} label="History" onClick={() => setHistoryOpen(true)} />
+          <BottomButton icon={Users} label="Trusted" onClick={() => setTrustedOpen(true)} />
+          <BottomButton
+            icon={Settings}
+            label="Settings"
+            onClick={() => settingsTriggerRef.current?.click()}
+          />
+        </nav>
+      </div>
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
+          <AssessmentsDisplay />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={trustedOpen} onOpenChange={setTrustedOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Trusted Circle</DialogTitle></DialogHeader>
+          <EmergencyContactManager />
+        </DialogContent>
+      </Dialog>
+
+      {/* SettingsDialog renders its own trigger; mount it off-screen and click via ref. */}
+      <div
+        className="absolute -left-[9999px] top-0"
+        aria-hidden
+        ref={(el) => {
+          settingsTriggerRef.current = el?.querySelector('button') ?? null;
+        }}
+      >
+        <SettingsDialog />
       </div>
     </div>
   );
 };
+
+interface BottomButtonProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+}
+const BottomButton: React.FC<BottomButtonProps> = ({ icon: Icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-800 bg-slate-900/40 py-2.5 text-slate-300 hover:bg-slate-800/60 transition-colors"
+  >
+    <Icon className="h-5 w-5" />
+    <span className="text-[11px]">{label}</span>
+  </button>
+);
 
 export default Dashboard;
