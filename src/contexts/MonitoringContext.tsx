@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage, UserActivityState, SyncStatus, getSyncInterval, getActiveSyncDuration, syncDataWithServer } from '../utils/monitoringUtils';
 import { determineEmotion, EmotionType } from '../utils/emotionUtils';
+import { detectEmergency, type EmergencyEvent } from '../utils/notificationUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
@@ -79,6 +80,8 @@ interface MonitoringContextType {
   // Emergency state
   currentEmergency: EmergencyType;
   resolveEmergency: () => void;
+  pendingEmergency: EmergencyEvent | null;
+  clearEmergency: () => void;
   
   // Data synchronization
   lastSyncTime: Date | null;
@@ -154,6 +157,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Emergency state
   const [currentEmergency, setCurrentEmergency] = useState<EmergencyType>('none');
+  const [pendingEmergency, setPendingEmergency] = useState<EmergencyEvent | null>(null);
+  const hrBufferRef = useRef<number[]>([]);
+  const lastEmergencyRef = useRef<{ type: string; at: number } | null>(null);
   
   // Sync state
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -523,10 +529,38 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         [newEmotion]: (prev[newEmotion] || 0) + 3
       }));
 
+      // ---- Emergency detection ----
+      // Maintain rolling buffer of last 5 heart rate readings
+      const buf = hrBufferRef.current;
+      buf.push(heartRate);
+      if (buf.length > 5) buf.shift();
+
+      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+      const sigma = baseline * 0.12;
+      const event = detectEmergency(
+        heartRate,
+        baseline,
+        sigma,
+        speechPercentage,
+        [...buf],
+        emotionStreakRef.current,
+        newEmotion,
+        isTalking,
+      );
+      if (event) {
+        const last = lastEmergencyRef.current;
+        const now = Date.now();
+        const sameRecent = last && last.type === event.type && (now - last.at) < 5 * 60 * 1000;
+        if (!sameRecent) {
+          lastEmergencyRef.current = { type: event.type, at: now };
+          setPendingEmergency(event);
+        }
+      }
+
     }, 3000);
 
     return () => clearInterval(emotionInterval);
-  }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
+  }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground, isTalking]);
 
   // Sample current readings into the rolling buffer every 60s
   useEffect(() => {
@@ -721,6 +755,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleTalking = () => setIsTalking(prev => !prev);
   const toggleBackgroundMode = () => setRunInBackground(prev => !prev);
   const resolveEmergency = () => setCurrentEmergency('none');
+  const clearEmergency = () => setPendingEmergency(null);
   
   // Setup functions
   const startSetup = () => {
@@ -819,6 +854,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     currentEmergency,
     resolveEmergency,
+    pendingEmergency,
+    clearEmergency,
     emotionStreak,
     
     // Add sync properties
