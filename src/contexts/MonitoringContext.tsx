@@ -483,7 +483,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           emotion: currentEmotion,
           queuedAt: Date.now(),
         });
-      }
+        setLastWriteStatus('queued');
+        setLastWriteAt(new Date());
       log('done', { success, firestoreAttempted });
 
       if (success) {
