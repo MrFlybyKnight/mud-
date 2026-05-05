@@ -80,6 +80,38 @@ const SetupWizard: React.FC = () => {
 
   const [voiceBaseline, setVoiceBaseline] = useState<{ rate: number; tone: number } | null>(null);
 
+  const saveVoiceBaseline = async (rate: number, tone: number) => {
+    if (!user?.uid) {
+      toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, { rate, tone });
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          baselineSpeechRate: rate,
+          baselineVoiceTone: tone,
+          baselineVoiceCalibrationAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setBaselineVoiceSpeed(rate);
+      setBaselineVoiceTone(tone);
+      toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
+      setCalibrationValue(0);
+      nextSetupStep();
+    } catch (e: any) {
+      const code = e?.code ?? 'unknown';
+      const message = e?.message ?? String(e);
+      console.error('[SetupWizard] Failed to save voice baseline:', { code, message, error: e });
+      toast({ title: 'Save failed', description: `${code}: ${message}`, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleNext = async () => {
     if (setupStep === 1) {
       if (!user?.uid) {
