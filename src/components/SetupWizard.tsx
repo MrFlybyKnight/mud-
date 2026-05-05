@@ -190,8 +190,11 @@ const SetupWizard: React.FC = () => {
       case 2:
         return (
           <VoiceSequenceCalibration
-            onComplete={(rate, tone) => setVoiceBaseline({ rate, tone })}
-            result={voiceBaseline}
+            onFinalize={async (rate, tone) => {
+              setVoiceBaseline({ rate, tone });
+              await saveVoiceBaseline(rate, tone);
+            }}
+            isSaving={isSaving}
           />
         );
 
