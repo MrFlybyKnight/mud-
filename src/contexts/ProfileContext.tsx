@@ -5,7 +5,7 @@ import { secureStoreProfile, secureRetrieveProfile, verifyProfileEncryption } fr
 import { useEncryption } from './EncryptionContext';
 import { useAuth } from './AuthContext';
 import { db } from '@/firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define profile data structure
 export interface ProfileData {
@@ -230,6 +230,63 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     saveProfiles();
   }, [profiles, currentProfileId, isReady]);
+
+  // Hydrate profile from Firestore (users/{uid}) on auth change.
+  // Firestore is the source of truth across devices/sessions; local state is
+  // only a cache. We merge into the current profile so calibration values that
+  // already loaded from local state aren't wiped if the cloud doc lacks them.
+  useEffect(() => {
+    if (!uid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (cancelled || !snap.exists()) return;
+        const data = snap.data() as Record<string, any>;
+
+        const cloudProfile: Partial<ProfileData> = {
+          name: data.name ?? undefined,
+          age: data.age ?? undefined,
+          gender: data.gender ?? undefined,
+          occupation: data.occupation ?? undefined,
+          phoneNumber: data.phoneNumber ?? undefined,
+          baselineHeartRateResting:
+            data.baselineHeartRateResting ?? data.baselineHeartRate ?? undefined,
+          baselineHeartRateActive: data.baselineHeartRateActive ?? undefined,
+          naturalSpeechRate:
+            data.naturalSpeechRate ?? data.baselineSpeechRate ?? data.baselineVoiceSpeed ?? undefined,
+          naturalSpeechVolume: data.naturalSpeechVolume ?? undefined,
+          baselineSpeechTone: data.baselineSpeechTone ?? undefined,
+          speechComplexityPreference: data.speechComplexityPreference ?? undefined,
+          baselineHeartRate: data.baselineHeartRate ?? undefined,
+          baselineVoiceToneAverage: data.baselineVoiceToneAverage ?? undefined,
+          baselineSpeechRate: data.baselineSpeechRate ?? undefined,
+          baselineAccentProfile: data.baselineAccentProfile ?? undefined,
+          sigmaThreshold: data.sigmaThreshold ?? undefined,
+        };
+
+        // Drop undefined keys so we don't overwrite existing values with undefined.
+        const clean: Partial<ProfileData> = {};
+        for (const [k, v] of Object.entries(cloudProfile)) {
+          if (v !== undefined) (clean as any)[k] = v;
+        }
+        if (Object.keys(clean).length === 0) return;
+
+        const targetId = currentProfileId;
+        setProfiles(prev =>
+          prev.map(p =>
+            p.id === targetId
+              ? { ...p, ...clean, lastUpdated: new Date() }
+              : p,
+          ),
+        );
+      } catch (e) {
+        console.warn('[ProfileContext] Failed to hydrate profile from Firestore:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
 
   // Check if profile has necessary data
   const isProfileComplete = Boolean(
