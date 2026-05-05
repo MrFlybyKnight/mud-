@@ -29,9 +29,8 @@ const Dashboard: React.FC = () => {
   const { isProfileComplete } = useProfile();
 
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [circleOpen, setCircleOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [trustedOpen, setTrustedOpen] = useState(false);
+  const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   if (isSetupHydrating) {
     return (
