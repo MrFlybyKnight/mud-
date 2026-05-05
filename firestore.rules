@@ -28,6 +28,18 @@ service cloud.firestore {
       match /settings/{settingsId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /subchecks/{subcheckId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /checkpoints/{checkpointId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      match /dailySummaries/{summaryId} {
+        allow read, write: if isOwner(uid);
+      }
     }
   }
 }
