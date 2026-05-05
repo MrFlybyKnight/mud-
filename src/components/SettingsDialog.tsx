@@ -12,7 +12,13 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { useSecureProfile } from '@/hooks/use-secure-profile';
 import { CircleFadingPlus, Bell, Heart, MessageCircle, Smile, Shield, ShieldAlert } from 'lucide-react';
 
-const SettingsDialog = () => {
+interface SettingsDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}
+
+const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, hideTrigger }) => {
   const { currentProfile, updateProfile } = useProfile();
   const { toast } = useToast();
   const [name, setName] = React.useState(currentProfile?.name || '');
@@ -95,10 +101,12 @@ const SettingsDialog = () => {
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Settings</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Settings</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
