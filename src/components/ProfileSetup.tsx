@@ -24,7 +24,7 @@ import { ArrowRight, UserRound } from 'lucide-react';
 
 const ProfileSetup: React.FC = () => {
   const { currentProfile, updateProfile } = useProfile();
-  const { baselineHeartRate, baselineVoiceSpeed } = useMonitoring();
+  const { baselineHeartRate, baselineVoiceSpeed, completeSetup, isSetupComplete } = useMonitoring();
   const { user } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
