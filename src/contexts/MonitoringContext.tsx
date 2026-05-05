@@ -240,99 +240,10 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
   
-  // Delay first sync after setup completes so AuthContext has time to resolve uid
-  const [syncReady, setSyncReady] = useState<boolean>(false);
-  useEffect(() => {
-    if (!isSetupComplete) {
-      setSyncReady(false);
-      return;
-    }
-    const t = setTimeout(() => setSyncReady(true), 5000);
-    return () => clearTimeout(t);
-  }, [isSetupComplete]);
-
-  // Auto-flush queued metrics when uid becomes available or connection is restored
-  useEffect(() => {
-    if (!uid) return;
-    flushQueue(uid).catch((e) => console.error('[performSync] auto-flush error', e));
-    const onOnline = () => {
-      console.log('[performSync] online event - flushing queue');
-      flushQueue(uid).catch((e) => console.error('[performSync] online flush error', e));
-    };
-    window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
-  }, [uid]);
-
-  // Data sync effect - handles the automatic sync scheduling
-  useEffect(() => {
-    if (!isSetupComplete || !isMonitoring || !syncReady) return;
-
-    // Don't run if app is in background and background mode is disabled
-    if (!isAppForeground.current && !runInBackground) return;
-
-    const now = new Date();
-    const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
-    const currentActivityState = isActiveSync ? 'active' : userActivityState;
-
-    // Schedule sync based on activity state
-    scheduleSyncBasedOnActivity(currentActivityState);
-
-    // Cleanup function to clear timeout on unmount or dependency change
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = null;
-      }
-    };
-  }, [
-    isSetupComplete,
-    isMonitoring,
-    runInBackground,
-    userActivityState,
-    lastSyncTime,
-    activeSyncEndTime,
-    syncStatus,
-    syncReady,
-  ]);
-  
-  // Schedule data sync based on user activity state
-  const scheduleSyncBasedOnActivity = (activityState: UserActivityState) => {
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-      syncTimeoutRef.current = null;
-    }
-    
-    // Don't schedule if sync is in progress
-    if (syncStatus === 'in-progress') {
-      return;
-    }
-    
-    const interval = getSyncInterval(activityState);
-    
-    syncTimeoutRef.current = setTimeout(async () => {
-      // Check if we should still be in active sync mode
-      const now = new Date();
-      const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
-      
-      if (activityState === 'active' && !isActiveSync) {
-        // If we were active but active sync period has ended
-        setActiveSyncEndTime(null);
-        scheduleSyncBasedOnActivity('idle'); // Switch to idle sync interval
-        return;
-      }
-      
-      // Execute the sync
-      await performSync();
-      
-      // Reschedule next sync
-      syncTimeoutRef.current = null;
-      
-      // Check activity state again after sync
-      const stateAfterSync = activeSyncEndTime !== null && new Date() < activeSyncEndTime 
-        ? 'active' 
-        : userActivityState;
-      scheduleSyncBasedOnActivity(stateAfterSync);
-    }, interval);
+  // Automatic sync is disabled. Sync is only triggered manually via the
+  // "Sync to Firebase" button on the dashboard.
+  const scheduleSyncBasedOnActivity = (_activityState: UserActivityState) => {
+    // no-op: automatic scheduling disabled
   };
 
   // Perform the actual sync operation
@@ -399,115 +310,57 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const performSync = async () => {
-    const DEBUG = true; // debug mode for sync logging
-    const log = (...args: unknown[]) => DEBUG && console.log('[performSync]', ...args);
+    console.log('[performSync] manual sync triggered', {
+      uid,
+      heartRate,
+      speechPercentage,
+      emotion: currentEmotion,
+    });
 
-    if (syncStatus === 'in-progress') {
-      log('skipped: sync already in-progress');
+    if (!uid) {
+      console.log('performSync skipped - no uid');
+      toast({
+        title: 'Sync Failed',
+        description: 'No authenticated user. Please sign in.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+      setLastWriteStatus('failed');
+      setLastWriteAt(new Date());
       return;
     }
 
-    if (!uid) {
-      console.log('performSync skipped - no uid, queuing metric locally');
-      enqueueMetric({
+    setSyncStatus('in-progress');
+    const path = `users/${uid}/watchMetrics`;
+
+    try {
+      const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
         heartRate,
         speechPercentage,
         emotion: currentEmotion,
-        queuedAt: Date.now(),
+        timestamp: serverTimestamp(),
       });
-      return;
-    }
-
-    log('start', { uidPresent: Boolean(uid), uid, heartRate, speechPercentage, currentEmotion });
-    setSyncStatus('in-progress');
-
-    try {
-      // Prepare data payload for sync
-      const syncData = {
-        timestamp: new Date(),
-        heartRate,
-        speechPercentage,
-        currentEmotion,
-        assessments: assessments.filter(a => !a.timestamp ||
-          (lastSyncTime && a.timestamp > lastSyncTime))
-      };
-
-      const success = await syncDataWithServer(syncData);
-      log('syncDataWithServer result', { success });
-
-      // Persist real metrics to Firestore for the authenticated user
-      let firestoreAttempted = false;
-      if (success && uid) {
-        firestoreAttempted = true;
-        const path = `users/${uid}/watchMetrics`;
-
-        // Try to flush any previously queued metrics first
-        try {
-          await flushQueue(uid);
-        } catch (e) {
-          console.error('[performSync] flushQueue threw', e);
-        }
-
-        log('Firestore write: attempting', { uid, path });
-        try {
-          const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
-            heartRate,
-            speechPercentage,
-            emotion: currentEmotion,
-            timestamp: serverTimestamp(),
-          });
-          console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
-          setLastWriteStatus('success');
-          setLastWriteAt(new Date());
-        } catch (e) {
-          console.error('[performSync] Firestore write FAILED, queuing locally', { uid, path, error: e });
-          enqueueMetric({
-            heartRate,
-            speechPercentage,
-            emotion: currentEmotion,
-            queuedAt: Date.now(),
-          });
-          setLastWriteStatus('failed');
-          setLastWriteAt(new Date());
-        }
-      } else {
-        log('Firestore write: skipped, queuing locally', {
-          reason: !success ? 'server sync failed' : 'no authenticated uid',
-          success,
-          uidPresent: Boolean(uid),
-          uid: uid ?? null,
-        });
-        enqueueMetric({
-          heartRate,
-          speechPercentage,
-          emotion: currentEmotion,
-          queuedAt: Date.now(),
-        });
-        setLastWriteStatus('queued');
-        setLastWriteAt(new Date());
-      }
-      log('done', { success, firestoreAttempted });
-
-      if (success) {
-        setSyncStatus('success');
-        setLastSyncTime(new Date());
-        toast({
-          title: "Data Synchronized",
-          description: `Last sync: ${format(new Date(), 'h:mm:ss a')}`,
-          duration: 2000,
-        });
-      } else {
-        setSyncStatus('failed');
-        toast({
-          title: "Sync Failed",
-          description: "Couldn't synchronize data with the server.",
-          variant: "destructive",
-          duration: 3000,
-        });
-      }
+      console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
+      setLastWriteStatus('success');
+      setLastWriteAt(new Date());
+      setLastSyncTime(new Date());
+      setSyncStatus('success');
+      toast({
+        title: 'Synced to Firebase',
+        description: `Saved metrics at ${format(new Date(), 'h:mm:ss a')}`,
+        duration: 2000,
+      });
     } catch (error) {
-      console.error('[performSync] Sync error:', error);
+      console.error('[performSync] Firestore write FAILED', { uid, path, error });
+      setLastWriteStatus('failed');
+      setLastWriteAt(new Date());
       setSyncStatus('failed');
+      toast({
+        title: 'Sync Failed',
+        description: error instanceof Error ? error.message : 'Could not write to Firebase.',
+        variant: 'destructive',
+        duration: 3000,
+      });
     }
   };
 
@@ -786,10 +639,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setLastAssessmentTime(null);
     setIsMonitoring(true); // Start monitoring automatically after setup
     
-    // Initialize sync
+    // Sync is manual only — no automatic scheduling.
     setLastSyncTime(null);
     setSyncStatus('none');
-    scheduleSyncBasedOnActivity('idle');
   };
 
   const nextSetupStep = () => {

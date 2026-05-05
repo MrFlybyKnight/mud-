@@ -24,7 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, BarChart2, AlertTriangle, Activity } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency } = useMonitoring();
+  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency, manualSync, syncStatus } = useMonitoring();
   const { isProfileComplete } = useProfile();
   const { platform, isIOS, isAndroid } = usePlatformContext();
 
@@ -133,6 +133,12 @@ const Dashboard: React.FC = () => {
       </Tabs>
       
       <div className="flex justify-center gap-4 flex-wrap">
+        <Button
+          onClick={() => manualSync()}
+          disabled={syncStatus === 'in-progress'}
+        >
+          {syncStatus === 'in-progress' ? 'Syncing…' : 'Sync to Firebase'}
+        </Button>
         <SettingsDialog />
         <Button variant="outline" onClick={startSetup}>Re-calibrate</Button>
         <Button variant="outline" id="profile-setup" onClick={() => {}}>Edit Profile</Button>
