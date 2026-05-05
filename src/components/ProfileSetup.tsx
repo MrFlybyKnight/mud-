@@ -106,7 +106,7 @@ const ProfileSetup: React.FC = () => {
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = () => {
     const updatedProfile = {
       name: formData.name,
       age: formData.age ? parseInt(formData.age.toString(), 10) : null,
@@ -125,42 +125,55 @@ const ProfileSetup: React.FC = () => {
       speechComplexityPreference: formData.speechComplexityPreference || null,
     };
 
-    setIsSaving(true);
-    try {
-      if (user?.uid) {
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            name: updatedProfile.name,
-            age: updatedProfile.age,
-            gender: updatedProfile.gender,
-            occupation: updatedProfile.occupation,
-            baselineSpeechTone: updatedProfile.baselineSpeechTone,
-            speechComplexityPreference: updatedProfile.speechComplexityPreference,
-            profileCompletedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
-      // Update local context AFTER Firestore confirms — this flips
-      // isProfileComplete and Dashboard will render automatically.
-      updateProfile(currentProfile.id, updatedProfile);
-      // Force the top-level routing to swap from SetupWizard to Dashboard.
-      if (!isSetupComplete) {
-        completeSetup();
-      } else {
-        console.log('Navigating to dashboard');
-      }
-    } catch (e: any) {
-      console.error('[ProfileSetup] Failed to save profile:', e);
-      toast({
-        title: 'Save failed',
-        description: e?.message ?? 'Could not save profile.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
+    // OPTIMISTIC: flip context immediately so Dashboard renders without waiting
+    // on the network round-trip. The Firestore write happens in the background.
+    updateProfile(currentProfile.id, updatedProfile);
+    if (!isSetupComplete) {
+      completeSetup();
+    } else {
+      console.log('Navigating to dashboard');
     }
+
+    // Signal Dashboard to show its "Setting up your profile..." indicator.
+    window.dispatchEvent(new CustomEvent('profile-save-start'));
+
+    // Background save with one automatic retry on failure.
+    const persist = async () => {
+      if (!user?.uid) return;
+      await setDoc(
+        doc(db, 'users', user.uid),
+        {
+          name: updatedProfile.name,
+          age: updatedProfile.age,
+          gender: updatedProfile.gender,
+          occupation: updatedProfile.occupation,
+          baselineSpeechTone: updatedProfile.baselineSpeechTone,
+          speechComplexityPreference: updatedProfile.speechComplexityPreference,
+          profileCompletedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    };
+
+    (async () => {
+      try {
+        await persist();
+      } catch (e1) {
+        console.warn('[ProfileSetup] Background save failed, retrying once:', e1);
+        try {
+          await persist();
+        } catch (e2: any) {
+          console.error('[ProfileSetup] Retry also failed:', e2);
+          toast({
+            title: 'Profile save failed',
+            description: e2?.message ?? 'We could not save your profile. Please try again from Settings.',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        window.dispatchEvent(new CustomEvent('profile-save-end'));
+      }
+    })();
   };
 
   const renderStep = () => {
