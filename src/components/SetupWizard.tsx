@@ -186,16 +186,12 @@ const SetupWizard: React.FC = () => {
         );
       case 2:
         return (
-          <VoiceCalibration 
-            type="speed"
-            isCalibrating={isCalibrating}
-            progress={progress}
-            secondsLeft={secondsLeft}
-            calibrationValue={calibrationValue}
-            startCalibration={startCalibration}
-            prompt="Please read the following text at your normal speaking speed: 'The quick brown fox jumps over the lazy dog. Weather today is sunny with a chance of clouds.'"
+          <VoiceSequenceCalibration
+            onComplete={(rate, tone) => setVoiceBaseline({ rate, tone })}
+            result={voiceBaseline}
           />
         );
+
       case 3:
         return (
           <VoiceCalibration 
