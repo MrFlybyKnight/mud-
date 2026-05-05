@@ -195,6 +195,13 @@ const Dashboard: React.FC = () => {
       >
         <SettingsDialog />
       </div>
+
+      {profileSaving && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-4 py-2 text-xs text-slate-200 shadow-lg backdrop-blur animate-fade-in">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+          Setting up your profile…
+        </div>
+      )}
     </div>
   );
 };
