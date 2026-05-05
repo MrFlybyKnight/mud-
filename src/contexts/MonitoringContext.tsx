@@ -529,10 +529,38 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         [newEmotion]: (prev[newEmotion] || 0) + 3
       }));
 
+      // ---- Emergency detection ----
+      // Maintain rolling buffer of last 5 heart rate readings
+      const buf = hrBufferRef.current;
+      buf.push(heartRate);
+      if (buf.length > 5) buf.shift();
+
+      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+      const sigma = baseline * 0.12;
+      const event = detectEmergency(
+        heartRate,
+        baseline,
+        sigma,
+        speechPercentage,
+        [...buf],
+        emotionStreakRef.current,
+        newEmotion,
+        isTalking,
+      );
+      if (event) {
+        const last = lastEmergencyRef.current;
+        const now = Date.now();
+        const sameRecent = last && last.type === event.type && (now - last.at) < 5 * 60 * 1000;
+        if (!sameRecent) {
+          lastEmergencyRef.current = { type: event.type, at: now };
+          setPendingEmergency(event);
+        }
+      }
+
     }, 3000);
 
     return () => clearInterval(emotionInterval);
-  }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
+  }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground, isTalking]);
 
   // Sample current readings into the rolling buffer every 60s
   useEffect(() => {
