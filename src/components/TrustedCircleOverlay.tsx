@@ -53,16 +53,20 @@ const initials = (name: string) =>
 interface CornerAvatarProps {
   position: TrustedPosition;
   contact?: TrustedContact;
-  onOpen: (position: TrustedPosition) => void;
+  onTap: (position: TrustedPosition) => void;
   onLongPressRemove: (position: TrustedPosition) => void;
 }
 
-const CornerAvatar: React.FC<CornerAvatarProps> = ({ position, contact, onOpen, onLongPressRemove }) => {
+const CornerAvatar: React.FC<CornerAvatarProps> = ({ position, contact, onTap, onLongPressRemove }) => {
   const timerRef = useRef<number | null>(null);
+  const longPressedRef = useRef(false);
+  const isPrimary = position === PRIMARY_POSITION;
 
   const startPress = () => {
+    longPressedRef.current = false;
     if (!contact) return;
     timerRef.current = window.setTimeout(() => {
+      longPressedRef.current = true;
       onLongPressRemove(position);
       timerRef.current = null;
     }, 600);
@@ -77,7 +81,10 @@ const CornerAvatar: React.FC<CornerAvatarProps> = ({ position, contact, onOpen, 
   return (
     <button
       type="button"
-      onClick={() => onOpen(position)}
+      onClick={() => {
+        if (longPressedRef.current) return;
+        onTap(position);
+      }}
       onMouseDown={startPress}
       onMouseUp={cancelPress}
       onMouseLeave={cancelPress}
@@ -88,18 +95,31 @@ const CornerAvatar: React.FC<CornerAvatarProps> = ({ position, contact, onOpen, 
         'absolute z-30 flex flex-col items-center gap-1 animate-scale-in',
         POSITION_CLASS[position],
       )}
-      aria-label={contact ? `${contact.name} — ${contact.phone}` : `Add trusted contact (${position})`}
+      aria-label={
+        contact
+          ? `Call ${contact.name} at ${contact.phone}${isPrimary ? ' (primary contact)' : ''}`
+          : `Add trusted contact (${position})`
+      }
     >
-      <span
-        className={cn(
-          'flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg ring-2 ring-slate-900',
-          contact ? COLOR_BY_POSITION[position] : 'bg-slate-700',
+      <span className="relative">
+        <span
+          className={cn(
+            'flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-white shadow-lg ring-2',
+            contact ? COLOR_BY_POSITION[position] : 'bg-slate-700',
+            isPrimary ? 'ring-teal-300' : 'ring-slate-900',
+          )}
+        >
+          {contact ? initials(contact.name) : <UserPlus className="h-5 w-5 text-slate-300" />}
+        </span>
+        {isPrimary && (
+          <Star
+            className="absolute -top-1 -right-1 h-4 w-4 fill-teal-300 text-teal-300 drop-shadow"
+            aria-hidden
+          />
         )}
-      >
-        {contact ? initials(contact.name) : <UserPlus className="h-5 w-5 text-slate-300" />}
       </span>
       <span className="max-w-[72px] truncate text-[10px] text-slate-300">
-        {contact ? contact.name.split(' ')[0] : 'Add'}
+        {contact ? contact.name.split(' ')[0] : isPrimary ? 'Primary' : 'Add'}
       </span>
     </button>
   );
