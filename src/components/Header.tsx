@@ -55,9 +55,18 @@ const Header: React.FC = () => {
           </Button>
           <NotificationCenter />
           {user ? (
-            <Button variant="outline" size="sm" onClick={() => logout()} disabled={authBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await logout();
+                toast({ title: 'Signed out', description: 'Returned to sign-in screen.' });
+              }}
+              disabled={authBusy}
+              title={user.email ?? undefined}
+            >
               <LogOut className="mr-2 h-4 w-4" />
-              {user.email ?? 'Log out'}
+              Sign out
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={handleGoogle} disabled={authBusy}>
