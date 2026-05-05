@@ -1,8 +1,7 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Check, Trash, X, MessageCircle, Heart, Smile } from 'lucide-react';
+import { Bell, Check, Trash, X, MessageCircle, Heart, Smile, Pencil } from 'lucide-react';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
@@ -11,6 +10,49 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { SuggestionType } from '@/utils/notificationUtils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type Frequency = 'low' | 'medium' | 'high';
+interface NotificationPrefs {
+  heartEnabled: boolean;
+  speechEnabled: boolean;
+  emotionEnabled: boolean;
+  frequency: Frequency;
+  sensitivity: number; // 0-100
+}
+const PREFS_KEY = 'notificationPrefs';
+const DEFAULT_PREFS: NotificationPrefs = {
+  heartEnabled: true,
+  speechEnabled: true,
+  emotionEnabled: true,
+  frequency: 'medium',
+  sensitivity: 50,
+};
+const loadPrefs = (): NotificationPrefs => {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS;
+  } catch {
+    return DEFAULT_PREFS;
+  }
+};
 
 const NotificationCenter = () => {
   const { 
