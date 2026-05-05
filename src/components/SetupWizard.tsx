@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { upsertUserProfile } from '@/firebase/firestore';
 import { useToast } from '@/components/ui/use-toast';
 import { db } from '@/firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +19,7 @@ const SetupWizard: React.FC = () => {
     setupStep,
     nextSetupStep,
     completeSetup,
+    baselineHeartRate,
     setBaselineHeartRate,
     setBaselineVoiceSpeed,
     setBaselineVoiceTone,
@@ -31,6 +32,33 @@ const SetupWizard: React.FC = () => {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(30);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Prefill the resting heart rate from context, or fetch from Firestore if not loaded.
+  useEffect(() => {
+    if (calibrationValue > 0) return;
+    if (baselineHeartRate && baselineHeartRate > 0) {
+      console.log('[SetupWizard] Prefilling calibrationValue from context baselineHeartRate:', baselineHeartRate);
+      setCalibrationValue(baselineHeartRate);
+      return;
+    }
+    if (!user?.uid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.data() as { baselineHeartRate?: number } | undefined;
+        if (!cancelled && data?.baselineHeartRate && data.baselineHeartRate > 0) {
+          console.log('[SetupWizard] Prefilling calibrationValue from Firestore:', data.baselineHeartRate);
+          setCalibrationValue(data.baselineHeartRate);
+          setBaselineHeartRate(data.baselineHeartRate);
+        }
+      } catch (e) {
+        console.warn('[SetupWizard] Failed to read baselineHeartRate from Firestore:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, baselineHeartRate]);
 
   useEffect(() => {
     if (!isCalibrating) return;
