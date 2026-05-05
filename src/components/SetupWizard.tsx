@@ -454,22 +454,44 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onC
   }
 
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-8">
+      <div className="text-center text-sm font-medium text-muted-foreground tracking-wide uppercase">
+        Phrase {index + 1} of {total}
+      </div>
+      <Progress value={overallProgress} max={100} className="h-1.5" />
+
       <div className="flex justify-center">
-        <Mic size={48} className="text-blue-500 pulse-animation" />
+        <Mic size={40} className="text-blue-500 pulse-animation" />
       </div>
-      <div className="text-center text-sm text-muted-foreground">
-        Phrase {index + 1} of {total} · {secondsLeft}s
-      </div>
-      <div className="text-center space-y-3 py-6">
-        <p className="text-2xl md:text-3xl font-semibold leading-snug px-4">
+
+      <div className="text-center space-y-6 py-12 px-6">
+        <p className="text-3xl md:text-4xl font-semibold leading-relaxed tracking-tight">
           “{current.phrase}”
         </p>
         <p className="text-sm text-muted-foreground italic">
           {current.targetRange}
         </p>
       </div>
-      <Progress value={overallProgress} max={100} className="h-2" />
+
+      <div className="text-center space-y-2">
+        <div className="text-5xl font-light tabular-nums text-foreground">
+          {secondsRemaining}s
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {canAdvance ? 'Ready when you are' : `Listening… ${MIN_PHRASE_SECONDS - elapsed}s until you can continue`}
+        </p>
+      </div>
+
+      <div className="flex justify-center pt-4">
+        <Button
+          size="lg"
+          variant={canAdvance ? 'default' : 'outline'}
+          disabled={!canAdvance}
+          onClick={advance}
+        >
+          Next Phrase <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
