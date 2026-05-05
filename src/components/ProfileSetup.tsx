@@ -106,24 +106,55 @@ const ProfileSetup: React.FC = () => {
     }
   };
 
-  const handleComplete = () => {
-    // Convert numeric values
+  const handleComplete = async () => {
     const updatedProfile = {
       name: formData.name,
       age: formData.age ? parseInt(formData.age.toString(), 10) : null,
       gender: formData.gender || null,
       occupation: formData.occupation || null,
-      baselineHeartRateResting: formData.baselineHeartRateResting ? 
-        parseInt(formData.baselineHeartRateResting.toString(), 10) : null,
-      naturalSpeechRate: formData.naturalSpeechRate ? 
-        parseInt(formData.naturalSpeechRate.toString(), 10) : null,
-      naturalSpeechVolume: formData.naturalSpeechVolume ? 
-        parseInt(formData.naturalSpeechVolume.toString(), 10) : null,
+      baselineHeartRateResting: formData.baselineHeartRateResting
+        ? parseInt(formData.baselineHeartRateResting.toString(), 10)
+        : null,
+      naturalSpeechRate: formData.naturalSpeechRate
+        ? parseInt(formData.naturalSpeechRate.toString(), 10)
+        : null,
+      naturalSpeechVolume: formData.naturalSpeechVolume
+        ? parseInt(formData.naturalSpeechVolume.toString(), 10)
+        : null,
       baselineSpeechTone: formData.baselineSpeechTone || null,
       speechComplexityPreference: formData.speechComplexityPreference || null,
     };
-    
-    updateProfile(currentProfile.id, updatedProfile);
+
+    setIsSaving(true);
+    try {
+      if (user?.uid) {
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            name: updatedProfile.name,
+            age: updatedProfile.age,
+            gender: updatedProfile.gender,
+            occupation: updatedProfile.occupation,
+            baselineSpeechTone: updatedProfile.baselineSpeechTone,
+            speechComplexityPreference: updatedProfile.speechComplexityPreference,
+            profileCompletedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      // Update local context AFTER Firestore confirms — this flips
+      // isProfileComplete and Dashboard will render automatically.
+      updateProfile(currentProfile.id, updatedProfile);
+    } catch (e: any) {
+      console.error('[ProfileSetup] Failed to save profile:', e);
+      toast({
+        title: 'Save failed',
+        description: e?.message ?? 'Could not save profile.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const renderStep = () => {
