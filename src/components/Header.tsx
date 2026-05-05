@@ -15,7 +15,7 @@ const Header: React.FC = () => {
       <div className="container max-w-6xl mx-auto flex h-14 items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <Heart className="h-6 w-6 text-red-500" />
-          <h1 className="text-lg font-bold">ChatterWatch</h1>
+          <h1 className="text-lg font-bold">MūD</h1>
         </div>
         
         <div className="flex items-center gap-4">
