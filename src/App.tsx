@@ -22,30 +22,30 @@ const App = () => {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
         <EncryptionProvider>
           <PlatformProvider>
-            <ProfileProvider>
-              <MonitoringProvider>
-                <TrustedCircleProvider>
-                <NotificationProvider>
-                  <FitnessProvider>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    <WatchNotification />
-                    <EmergencyOverlay />
-                    <DebugPanel />
-                    <Toaster />
-                  </FitnessProvider>
-                </NotificationProvider>
-                </TrustedCircleProvider>
-              </MonitoringProvider>
-            </ProfileProvider>
+            <AuthProvider>
+              <ProfileProvider>
+                <MonitoringProvider>
+                  <TrustedCircleProvider>
+                    <NotificationProvider>
+                      <FitnessProvider>
+                        <Routes>
+                          <Route path="/" element={<Index />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                        <WatchNotification />
+                        <EmergencyOverlay />
+                        <DebugPanel />
+                        <Toaster />
+                      </FitnessProvider>
+                    </NotificationProvider>
+                  </TrustedCircleProvider>
+                </MonitoringProvider>
+              </ProfileProvider>
+            </AuthProvider>
           </PlatformProvider>
         </EncryptionProvider>
-        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   );
