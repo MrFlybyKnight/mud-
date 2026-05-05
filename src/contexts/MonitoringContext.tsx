@@ -157,6 +157,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('none');
   const [userActivityState, setUserActivityState] = useState<UserActivityState>('idle');
   const [activeSyncEndTime, setActiveSyncEndTime] = useState<Date | null>(null);
+  const [lastWriteStatus, setLastWriteStatus] = useState<'success' | 'failed' | 'queued' | 'none'>('none');
+  const [lastWriteAt, setLastWriteAt] = useState<Date | null>(null);
+  const [queuedMetricsCount, setQueuedMetricsCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { toast } = useToast();
