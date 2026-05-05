@@ -246,16 +246,18 @@ const SetupWizard: React.FC = () => {
           <div className="text-sm text-muted-foreground">
             {setupStep}/4 steps complete
           </div>
-          <Button
-            onClick={handleNext}
-            disabled={isCalibrating || isSaving || (setupStep === 2 ? !voiceBaseline : calibrationValue === 0)}
-          >
-            {isSaving ? 'Saving...' : setupStep < 4 ? (
-              <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-            ) : (
-              'Complete Setup'
-            )}
-          </Button>
+          {setupStep !== 2 && (
+            <Button
+              onClick={handleNext}
+              disabled={isCalibrating || isSaving || calibrationValue === 0}
+            >
+              {isSaving ? 'Saving...' : setupStep < 4 ? (
+                <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+              ) : (
+                'Complete Setup'
+              )}
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
