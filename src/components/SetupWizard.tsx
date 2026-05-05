@@ -32,43 +32,36 @@ const SetupWizard: React.FC = () => {
     
     let timer: ReturnType<typeof setTimeout>;
     
-    if (setupStep === 1) {
-      // Heart rate calibration
-      timer = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            setIsCalibrating(false);
-            // Simulate collecting heart rate data
-            const simulatedHeartRate = Math.round(60 + Math.random() * 40);
-            setBaselineHeartRate(simulatedHeartRate);
-            setCalibrationValue(simulatedHeartRate);
-            return 0;
-          }
-          setProgress(((30 - prev + 1) / 30) * 100);
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      // Voice calibrations are shorter (10 seconds)
-      timer = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            setIsCalibrating(false);
-            // Simulate collecting voice data
-            const simulatedValue = Math.round(40 + Math.random() * 60);
-            
-            if (setupStep === 2) setBaselineVoiceSpeed(simulatedValue);
-            else if (setupStep === 3) setBaselineVoiceTone(simulatedValue);
-            else if (setupStep === 4) setBaselineVoiceAccent(simulatedValue);
-            
-            setCalibrationValue(simulatedValue);
-            return 0;
-          }
-          setProgress(((10 - prev + 1) / 10) * 100);
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    const totalDuration = setupStep === 1 ? 30 : 10;
+
+    timer = setInterval(() => {
+      let finished = false;
+      setSecondsLeft(prev => {
+        const next = prev - 1;
+        if (next <= 0) {
+          finished = true;
+          return 0;
+        }
+        setProgress(((totalDuration - next) / totalDuration) * 100);
+        return next;
+      });
+
+      if (finished) {
+        clearInterval(timer);
+        setIsCalibrating(false);
+        if (setupStep === 1) {
+          const simulatedHeartRate = Math.round(60 + Math.random() * 40);
+          setBaselineHeartRate(simulatedHeartRate);
+          setCalibrationValue(simulatedHeartRate);
+        } else {
+          const simulatedValue = Math.round(40 + Math.random() * 60);
+          if (setupStep === 2) setBaselineVoiceSpeed(simulatedValue);
+          else if (setupStep === 3) setBaselineVoiceTone(simulatedValue);
+          else if (setupStep === 4) setBaselineVoiceAccent(simulatedValue);
+          setCalibrationValue(simulatedValue);
+        }
+      }
+    }, 1000);
     
     return () => clearInterval(timer);
   }, [isCalibrating, setupStep, setBaselineHeartRate, setBaselineVoiceSpeed, setBaselineVoiceTone, setBaselineVoiceAccent]);
