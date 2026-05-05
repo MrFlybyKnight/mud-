@@ -244,6 +244,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearTimeout(t);
   }, [isSetupComplete]);
 
+  // Auto-flush queued metrics when uid becomes available or connection is restored
+  useEffect(() => {
+    if (!uid) return;
+    flushQueue(uid).catch((e) => console.error('[performSync] auto-flush error', e));
+    const onOnline = () => {
+      console.log('[performSync] online event - flushing queue');
+      flushQueue(uid).catch((e) => console.error('[performSync] online flush error', e));
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [uid]);
+
   // Data sync effect - handles the automatic sync scheduling
   useEffect(() => {
     if (!isSetupComplete || !isMonitoring || !syncReady) return;
@@ -317,6 +329,67 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Perform the actual sync operation
+  // ---- Local queue for watchMetrics (offline / unavailable Firestore) ----
+  const QUEUE_KEY = 'watchMetricsQueue';
+  type QueuedMetric = {
+    heartRate: number;
+    speechPercentage: number;
+    emotion: string;
+    queuedAt: number;
+  };
+
+  const readQueue = (): QueuedMetric[] => {
+    try {
+      const raw = localStorage.getItem(QUEUE_KEY);
+      return raw ? (JSON.parse(raw) as QueuedMetric[]) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeQueue = (q: QueuedMetric[]) => {
+    try {
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+    } catch (e) {
+      console.error('[performSync] Failed to persist queue', e);
+    }
+  };
+
+  const enqueueMetric = (m: QueuedMetric) => {
+    const q = readQueue();
+    q.push(m);
+    // Cap at 500 to prevent unbounded growth
+    const trimmed = q.length > 500 ? q.slice(q.length - 500) : q;
+    writeQueue(trimmed);
+    console.log('[performSync] Metric queued locally', { queueSize: trimmed.length });
+  };
+
+  const flushQueue = async (currentUid: string) => {
+    const q = readQueue();
+    if (q.length === 0) return;
+    console.log('[performSync] Flushing queued metrics', { count: q.length });
+    const remaining: QueuedMetric[] = [];
+    for (let i = 0; i < q.length; i++) {
+      const m = q[i];
+      try {
+        await addDoc(collection(db, 'users', currentUid, 'watchMetrics'), {
+          heartRate: m.heartRate,
+          speechPercentage: m.speechPercentage,
+          emotion: m.emotion,
+          timestamp: serverTimestamp(),
+          queuedAt: m.queuedAt,
+        });
+      } catch (e) {
+        console.error('[performSync] Flush failed at item, keeping rest queued', e);
+        // Keep this and all subsequent items
+        remaining.push(...q.slice(i));
+        break;
+      }
+    }
+    writeQueue(remaining);
+    console.log('[performSync] Flush complete', { flushed: q.length - remaining.length, remaining: remaining.length });
+  };
+
   const performSync = async () => {
     const DEBUG = true; // debug mode for sync logging
     const log = (...args: unknown[]) => DEBUG && console.log('[performSync]', ...args);
@@ -327,7 +400,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     if (!uid) {
-      console.log('performSync skipped - no uid');
+      console.log('performSync skipped - no uid, queuing metric locally');
+      enqueueMetric({
+        heartRate,
+        speechPercentage,
+        emotion: currentEmotion,
+        queuedAt: Date.now(),
+      });
       return;
     }
 
@@ -353,6 +432,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (success && uid) {
         firestoreAttempted = true;
         const path = `users/${uid}/watchMetrics`;
+
+        // Try to flush any previously queued metrics first
+        try {
+          await flushQueue(uid);
+        } catch (e) {
+          console.error('[performSync] flushQueue threw', e);
+        }
+
         log('Firestore write: attempting', { uid, path });
         try {
           const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
@@ -363,14 +450,26 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           });
           console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
         } catch (e) {
-          console.error('[performSync] Firestore write FAILED', { uid, path, error: e });
+          console.error('[performSync] Firestore write FAILED, queuing locally', { uid, path, error: e });
+          enqueueMetric({
+            heartRate,
+            speechPercentage,
+            emotion: currentEmotion,
+            queuedAt: Date.now(),
+          });
         }
       } else {
-        log('Firestore write: skipped', {
+        log('Firestore write: skipped, queuing locally', {
           reason: !success ? 'server sync failed' : 'no authenticated uid',
           success,
           uidPresent: Boolean(uid),
           uid: uid ?? null,
+        });
+        enqueueMetric({
+          heartRate,
+          speechPercentage,
+          emotion: currentEmotion,
+          queuedAt: Date.now(),
         });
       }
       log('done', { success, firestoreAttempted });
