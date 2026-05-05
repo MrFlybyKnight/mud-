@@ -377,7 +377,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
       }
     } catch (error) {
-      console.error("Sync error:", error);
+      console.error('[performSync] Sync error:', error);
       setSyncStatus('failed');
     }
   };
