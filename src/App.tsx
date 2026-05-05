@@ -33,6 +33,7 @@ const App = () => {
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                     <WatchNotification />
+                    <EmergencyOverlay />
                     <DebugPanel />
                     <Toaster />
                   </FitnessProvider>
