@@ -1,14 +1,35 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useMonitoring } from '@/contexts/MonitoringContext';
-import { Mic, MicOff, Heart, Moon, Sun } from 'lucide-react';
+import { Mic, MicOff, Heart, Moon, Sun, LogIn, LogOut } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const Header: React.FC = () => {
   const { isMonitoring, toggleMonitoring, isTalking, toggleTalking } = useMonitoring();
   const { theme, toggleTheme } = useTheme();
+  const { user, signInWithGoogle, logout } = useAuth();
+  const { toast } = useToast();
+  const [authBusy, setAuthBusy] = useState(false);
+
+  const handleGoogle = async () => {
+    setAuthBusy(true);
+    try {
+      const u = await signInWithGoogle();
+      toast({ title: 'Signed in', description: u.email ?? u.uid });
+    } catch (err) {
+      toast({
+        title: 'Google sign-in failed',
+        description: err instanceof Error ? err.message : String(err),
+        variant: 'destructive',
+      });
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
