@@ -854,6 +854,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     currentEmergency,
     resolveEmergency,
+    pendingEmergency,
+    clearEmergency,
     emotionStreak,
     
     // Add sync properties
