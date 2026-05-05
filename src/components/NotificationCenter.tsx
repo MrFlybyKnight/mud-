@@ -65,7 +65,12 @@ const NotificationCenter = () => {
   } = useNotification();
   
   const { platform } = usePlatformContext();
-  
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(() => loadPrefs());
+  useEffect(() => {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
+  }, [prefs]);
+
   const buttonClass = platformClass(platform, {
     base: "h-8 rounded-full",
     ios: "px-3",
@@ -128,18 +133,18 @@ const NotificationCenter = () => {
           <div className="flex gap-1">
             {notifications.length > 0 && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={buttonClass} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={buttonClass}
                   onClick={markAllAsRead}
                   title="Mark all as read"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={buttonClass}
                   onClick={clearAllNotifications}
                   title="Clear all notifications"
@@ -148,6 +153,16 @@ const NotificationCenter = () => {
                 </Button>
               </>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={buttonClass}
+              onClick={() => setPrefsOpen(true)}
+              title="Edit notification preferences"
+              aria-label="Edit notification preferences"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         
