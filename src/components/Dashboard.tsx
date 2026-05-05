@@ -133,6 +133,12 @@ const Dashboard: React.FC = () => {
       </Tabs>
       
       <div className="flex justify-center gap-4 flex-wrap">
+        <Button
+          onClick={() => manualSync()}
+          disabled={syncStatus === 'in-progress'}
+        >
+          {syncStatus === 'in-progress' ? 'Syncing…' : 'Sync to Firebase'}
+        </Button>
         <SettingsDialog />
         <Button variant="outline" onClick={startSetup}>Re-calibrate</Button>
         <Button variant="outline" id="profile-setup" onClick={() => {}}>Edit Profile</Button>
