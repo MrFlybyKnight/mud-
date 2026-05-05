@@ -5,7 +5,7 @@ import { secureStoreProfile, secureRetrieveProfile, verifyProfileEncryption } fr
 import { useEncryption } from './EncryptionContext';
 import { useAuth } from './AuthContext';
 import { db } from '@/firebase/config';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define profile data structure
 export interface ProfileData {
