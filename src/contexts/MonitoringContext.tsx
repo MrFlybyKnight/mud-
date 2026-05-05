@@ -357,6 +357,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const writeQueue = (q: QueuedMetric[]) => {
     try {
       localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+      setQueuedMetricsCount(q.length);
     } catch (e) {
       console.error('[performSync] Failed to persist queue', e);
     }
