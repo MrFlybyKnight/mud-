@@ -603,7 +603,25 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Speech alerts are temporarily disabled to reduce noise while debugging Firestore writes.
   }, [heartRateStatus, speechStatus, isMonitoring, toast]);
   
-  const toggleMonitoring = () => setIsMonitoring(prev => !prev);
+  const toggleMonitoring = () => {
+    setIsMonitoring(prev => {
+      const next = !prev;
+      console.log('[Monitoring] toggleMonitoring:', prev ? 'ACTIVE' : 'PAUSED', '→', next ? 'ACTIVE' : 'PAUSED');
+      // Clear any pending sync timeout when pausing so no sync triggers fire
+      if (!next && syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+      toast({
+        title: next ? 'Monitoring resumed' : 'Monitoring paused',
+        description: next
+          ? 'Heart rate, speech, and sync are active.'
+          : 'All data collection halted.',
+        duration: 2000,
+      });
+      return next;
+    });
+  };
   const toggleTalking = () => setIsTalking(prev => !prev);
   const toggleBackgroundMode = () => setRunInBackground(prev => !prev);
   const resolveEmergency = () => setCurrentEmergency('none');
