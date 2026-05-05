@@ -6,7 +6,7 @@ import ProfileSetup from './ProfileSetup';
 import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
 import SettingsDialog from './SettingsDialog';
-import EmergencyContactManager from './EmergencyContactManager';
+import AssessmentsDisplay from './AssessmentsDisplay';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
