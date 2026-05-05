@@ -150,7 +150,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('none');
   const [userActivityState, setUserActivityState] = useState<UserActivityState>('idle');
   const [activeSyncEndTime, setActiveSyncEndTime] = useState<Date | null>(null);
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const { toast } = useToast();
   

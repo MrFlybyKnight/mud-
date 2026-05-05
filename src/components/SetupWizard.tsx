@@ -25,7 +25,7 @@ const SetupWizard: React.FC = () => {
   useEffect(() => {
     if (!isCalibrating) return;
     
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     
     if (setupStep === 1) {
       // Heart rate calibration
