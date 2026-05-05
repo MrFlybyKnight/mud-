@@ -610,7 +610,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Setup functions
   const startSetup = () => {
-    setSetupStep(1);
+    setSetupStep(prev => {
+      if (prev > 0) {
+        console.log('[Setup] startSetup called but wizard already at step', prev, '— ignoring');
+        return prev;
+      }
+      console.log('[Setup] startSetup → step 1');
+      return 1;
+    });
     setIsSetupComplete(false);
   };
 
@@ -645,9 +652,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const nextSetupStep = () => {
-    setSetupStep(prev => prev + 1);
+    setSetupStep(prev => {
+      const next = prev + 1;
+      console.log('[Setup] nextSetupStep: advancing from step', prev, '→', next);
+      return next;
+    });
   };
-  
+
   const value = {
     heartRate,
     heartRateStatus,
