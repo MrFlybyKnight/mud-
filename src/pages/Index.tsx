@@ -35,7 +35,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {!isSetupComplete && <Header />}
       <main>
         <Dashboard />
       </main>
