@@ -617,19 +617,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     }
     
-    if (speechStatus === 'high') {
-      toast({
-        title: "Speech Alert", 
-        description: "You might be talking too much.",
-        duration: 3000,
-      });
-    } else if (speechStatus === 'low') {
-      toast({
-        title: "Speech Alert",
-        description: "Try to participate more in the conversation.",
-        duration: 3000,
-      });
-    }
+    // Speech alerts are temporarily disabled to reduce noise while debugging Firestore writes.
   }, [heartRateStatus, speechStatus, isMonitoring, toast]);
   
   const toggleMonitoring = () => setIsMonitoring(prev => !prev);
