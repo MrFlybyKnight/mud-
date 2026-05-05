@@ -261,14 +261,18 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Update an existing profile
   const updateProfile = (id: string, data: Partial<ProfileData>) => {
-    setProfiles(prev => 
-      prev.map(profile => 
-        profile.id === id 
-          ? { ...profile, ...data, lastUpdated: new Date() } 
-          : profile
-      )
+    let merged: ProfileData | null = null;
+    setProfiles(prev =>
+      prev.map(profile => {
+        if (profile.id !== id) return profile;
+        merged = { ...profile, ...data, lastUpdated: new Date() };
+        return merged;
+      })
     );
-    
+
+    // Persist to Firestore in the background with the merged result.
+    if (merged) persistProfileToFirestore(merged, data);
+
     toast({
       title: "Profile Updated",
       description: `Profile has been updated successfully`,
