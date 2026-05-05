@@ -74,6 +74,7 @@ interface MonitoringContextType {
   // Emotion tracking
   currentEmotion: EmotionType;
   emotionHistory: Record<EmotionType, number>;
+  emotionStreak: number;
   
   // Emergency state
   currentEmergency: EmergencyType;
@@ -183,6 +184,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Reference to track if the app is in foreground
   const isAppForeground = useRef<boolean>(true);
   const userLastActiveTime = useRef<number>(Date.now());
+  // Tracks consecutive identical emotion readings; gates sustained-state
+  // emotions like 'stressed' and 'anxious' which require ≥3 in a row.
+  const emotionStreakRef = useRef<number>(1);
+  const lastEmotionRef = useRef<EmotionType>('neutral');
+  const [emotionStreak, setEmotionStreak] = useState<number>(1);
   const ACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutes of inactivity to be considered idle
 
   // Hydrate setup-completion state from Firestore when user signs in.
@@ -493,22 +499,32 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const emotionInterval = setInterval(() => {
       const newEmotion = determineEmotion(
         heartRate,
-        speechPercentage, 
+        speechPercentage,
         baselineHeartRate > 0 ? baselineHeartRate : 75,
         baselineVoiceTone,
-        baselineVoiceSpeed
+        baselineVoiceSpeed,
+        emotionStreakRef.current
       );
-      
+
+      // Update streak: increment on repeat, reset to 1 on change.
+      if (newEmotion === lastEmotionRef.current) {
+        emotionStreakRef.current += 1;
+      } else {
+        emotionStreakRef.current = 1;
+        lastEmotionRef.current = newEmotion;
+      }
+      setEmotionStreak(emotionStreakRef.current);
+
       setCurrentEmotion(newEmotion);
-      
+
       // Update emotion history - track seconds spent in each emotion
       setEmotionHistory(prev => ({
         ...prev,
         [newEmotion]: (prev[newEmotion] || 0) + 3
       }));
-      
+
     }, 3000);
-    
+
     return () => clearInterval(emotionInterval);
   }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
 
