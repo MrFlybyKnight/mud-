@@ -306,10 +306,17 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Perform the actual sync operation
   const performSync = async () => {
-    if (syncStatus === 'in-progress') return;
-    
+    const DEBUG = true; // debug mode for sync logging
+    const log = (...args: unknown[]) => DEBUG && console.log('[performSync]', ...args);
+
+    if (syncStatus === 'in-progress') {
+      log('skipped: sync already in-progress');
+      return;
+    }
+
+    log('start', { uidPresent: Boolean(uid), uid: uid ?? null, heartRate, speechPercentage, currentEmotion });
     setSyncStatus('in-progress');
-    
+
     try {
       // Prepare data payload for sync
       const syncData = {
@@ -317,14 +324,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         heartRate,
         speechPercentage,
         currentEmotion,
-        assessments: assessments.filter(a => !a.timestamp || 
+        assessments: assessments.filter(a => !a.timestamp ||
           (lastSyncTime && a.timestamp > lastSyncTime))
       };
-      
+
       const success = await syncDataWithServer(syncData);
+      log('syncDataWithServer result', { success });
 
       // Persist real metrics to Firestore for the authenticated user
+      let firestoreAttempted = false;
       if (success && uid) {
+        firestoreAttempted = true;
+        log('Firestore write: attempting', { uid, path: `users/${uid}/watchMetrics` });
         try {
           await addWatchMetric(uid, {
             device: 'web-simulator',
@@ -335,10 +346,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               emotion: currentEmotion,
             },
           } as any);
+          log('Firestore write: SUCCESS');
         } catch (e) {
-          console.error('Firestore write failed:', e);
+          console.error('[performSync] Firestore write: FAILED', e);
         }
+      } else {
+        log('Firestore write: skipped', {
+          reason: !success ? 'server sync failed' : 'no authenticated uid',
+          success,
+          uidPresent: Boolean(uid),
+        });
       }
+      log('done', { success, firestoreAttempted });
 
       if (success) {
         setSyncStatus('success');
