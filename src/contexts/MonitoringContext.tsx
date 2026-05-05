@@ -183,7 +183,43 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const userLastActiveTime = useRef<number>(Date.now());
   const ACTIVITY_TIMEOUT = 3 * 60 * 1000; // 3 minutes of inactivity to be considered idle
 
-  // Effect to handle visibility changes (simulate background mode)
+  // Hydrate setup-completion state from Firestore when user signs in.
+  // If baselineHeartRate AND baselineVoiceCalibrationAt exist, the user has
+  // already completed the wizard — skip it and go straight to dashboard.
+  useEffect(() => {
+    if (!uid) {
+      setIsSetupComplete(false);
+      setSetupStep(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', uid));
+        if (cancelled) return;
+        const data = snap.data() as
+          | { baselineHeartRate?: number; baselineVoiceCalibrationAt?: unknown; baselineVoiceSpeed?: number; baselineVoiceTone?: number }
+          | undefined;
+        const hasHR = !!(data?.baselineHeartRate && data.baselineHeartRate > 0);
+        const hasVoice = !!data?.baselineVoiceCalibrationAt;
+        if (hasHR) setBaselineHeartRate(data!.baselineHeartRate!);
+        if (data?.baselineVoiceSpeed) setBaselineVoiceSpeed(data.baselineVoiceSpeed);
+        if (data?.baselineVoiceTone) setBaselineVoiceTone(data.baselineVoiceTone);
+        if (hasHR && hasVoice) {
+          console.log('[Setup] User already calibrated — skipping wizard');
+          setIsSetupComplete(true);
+          setSetupStep(0);
+        } else {
+          setIsSetupComplete(false);
+        }
+      } catch (e) {
+        console.warn('[Setup] Failed to hydrate setup state from Firestore:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid]);
+
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       isAppForeground.current = document.visibilityState === 'visible';
