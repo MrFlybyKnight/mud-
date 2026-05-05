@@ -4,6 +4,8 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { upsertUserProfile } from '@/firebase/firestore';
 import { useToast } from '@/components/ui/use-toast';
+import { db } from '@/firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
