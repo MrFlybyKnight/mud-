@@ -377,41 +377,49 @@ interface VoiceSequenceCalibrationProps {
   result: { rate: number; tone: number } | null;
 }
 
+const MIN_PHRASE_SECONDS = 8;
+const MAX_PHRASE_SECONDS = 15;
+
 const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onComplete, result }) => {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(calibrationSequence[0].duration);
+  const [elapsed, setElapsed] = useState(0);
 
   const total = calibrationSequence.length;
   const current = calibrationSequence[index];
 
+  const advance = React.useCallback(() => {
+    setIndex((i) => {
+      const nextI = i + 1;
+      if (nextI >= total) {
+        const avgRate = Math.round(90 + Math.random() * 60);
+        const dominantTone = Math.round(40 + Math.random() * 60);
+        onComplete(avgRate, dominantTone);
+        return i;
+      }
+      return nextI;
+    });
+    setElapsed(0);
+  }, [total, onComplete]);
+
   useEffect(() => {
     if (!started || result) return;
     const t = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev > 1) return prev - 1;
-        // advance phrase
-        setIndex((i) => {
-          const nextI = i + 1;
-          if (nextI >= total) {
-            // measure averages (simulated)
-            const avgRate = Math.round(90 + Math.random() * 60); // words/min
-            const dominantTone = Math.round(40 + Math.random() * 60);
-            onComplete(avgRate, dominantTone);
-            return i;
-          }
-          setSecondsLeft(calibrationSequence[nextI].duration);
-          return nextI;
-        });
-        return prev;
+      setElapsed((prev) => {
+        const next = prev + 1;
+        if (next >= MAX_PHRASE_SECONDS) {
+          advance();
+          return 0;
+        }
+        return next;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [started, result, total, onComplete]);
+  }, [started, result, advance]);
 
-  const overallProgress = result
-    ? 100
-    : ((index * current.duration + (current.duration - secondsLeft)) / (total * current.duration)) * 100;
+  const canAdvance = elapsed >= MIN_PHRASE_SECONDS;
+  const secondsRemaining = Math.max(0, MAX_PHRASE_SECONDS - elapsed);
+  const overallProgress = result ? 100 : (index / total) * 100;
 
   if (result) {
     return (
