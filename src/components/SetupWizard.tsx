@@ -282,14 +282,14 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
   startCalibration 
 }) => {
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-6">
       <div className="flex justify-center">
-        <Heart size={64} className={`${isCalibrating ? 'text-red-500 pulse-animation' : 'text-muted-foreground'}`} />
+        <Heart size={80} className={`${isCalibrating ? 'text-red-500 pulse-animation' : 'text-muted-foreground'}`} />
       </div>
       
-      <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Heart Rate Calibration</h3>
-        <p className="text-muted-foreground">
+      <div className="text-center space-y-4">
+        <h3 className="text-2xl md:text-3xl font-semibold">Heart Rate Calibration</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           We need to measure your resting heart rate for 30 seconds.
           Please sit comfortably and remain still.
         </p>
@@ -297,20 +297,20 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
       
       {isCalibrating ? (
         <div className="space-y-4">
-          <div className="flex justify-center">
-            <TimerIcon className="mr-2" /> 
+          <div className="flex justify-center items-center text-xl">
+            <TimerIcon className="mr-2 h-6 w-6" /> 
             <span>{secondsLeft} seconds remaining</span>
           </div>
           <Progress value={progress} max={100} className="h-2" />
         </div>
       ) : calibrationValue > 0 ? (
         <div className="text-center space-y-2">
-          <div className="text-2xl font-bold">{calibrationValue} BPM</div>
-          <p>Baseline heart rate recorded</p>
+          <div className="text-4xl font-bold">{calibrationValue} BPM</div>
+          <p className="text-lg">Baseline heart rate recorded</p>
         </div>
       ) : (
         <div className="flex justify-center">
-          <Button onClick={startCalibration}>
+          <Button size="lg" className="text-lg" onClick={startCalibration}>
             Start Heart Rate Measurement
           </Button>
         </div>
