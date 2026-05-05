@@ -3,6 +3,9 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { secureStoreProfile, secureRetrieveProfile, verifyProfileEncryption } from '@/utils/secureProfileUtils';
 import { useEncryption } from './EncryptionContext';
+import { useAuth } from './AuthContext';
+import { db } from '@/firebase/config';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define profile data structure
 export interface ProfileData {
