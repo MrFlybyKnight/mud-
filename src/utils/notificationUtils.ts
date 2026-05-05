@@ -77,36 +77,57 @@ export const getHeartRateSuggestion = (
 /**
  * Gets suggestions based on speech patterns
  */
+export type SpeechContext = 'date' | 'interview' | 'social' | 'meeting' | 'default';
+
 export const getSpeechSuggestion = (
   speechPercentage: number,
   status: StatusType,
-  inMeeting: boolean = false
+  inMeetingOrContext: boolean | SpeechContext = false
 ): NotificationData | null => {
   // Don't send notification for normal speech
   if (status === 'normal') return null;
-  
+
+  // Backward compat: boolean true → 'meeting'
+  const context: SpeechContext =
+    typeof inMeetingOrContext === 'boolean'
+      ? inMeetingOrContext ? 'meeting' : 'default'
+      : inMeetingOrContext;
+
   const id = `speech-${Date.now()}`;
   const timestamp = new Date();
   let title = '';
   let message = '';
   let priority: 'low' | 'medium' | 'high' = 'medium';
-  
+
   if (status === 'high') {
     title = 'Speech Pattern Alert';
-    if (inMeeting) {
+    if (context === 'meeting') {
       message = 'You might be dominating the conversation. Consider giving others a chance to speak.';
     } else {
-      message = 'You\'ve been talking a lot. Make sure to listen as much as you speak.';
+      message = "You've been talking a lot. Make sure to listen as much as you speak.";
     }
     priority = speechPercentage > 70 ? 'high' : 'medium';
   } else if (status === 'low') {
-    title = 'Low Participation';
-    message = inMeeting 
-      ? 'You haven\'t spoken much in this conversation. Consider sharing your thoughts.'
-      : 'You\'ve been quiet for a while. Engaging in conversation can be beneficial.';
+    title = 'A gentle nudge';
+    switch (context) {
+      case 'date':
+        message = "You've gone quiet — ask them a question, show some curiosity!";
+        break;
+      case 'interview':
+        message = 'Speak up — this is your moment to shine.';
+        break;
+      case 'social':
+        message = "You've been quiet for a while. Jump in!";
+        break;
+      case 'meeting':
+        message = "You've been quiet in this meeting — your perspective could really land right now.";
+        break;
+      default:
+        message = "You've been quiet — engaging more could make a real difference here.";
+    }
     priority = 'low';
   }
-  
+
   return {
     id,
     type: 'speech',
@@ -115,7 +136,7 @@ export const getSpeechSuggestion = (
     timestamp,
     priority,
     read: false,
-    actionable: false
+    actionable: false,
   };
 };
 
