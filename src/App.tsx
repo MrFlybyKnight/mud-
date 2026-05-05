@@ -13,6 +13,7 @@ import { FitnessProvider } from './contexts/FitnessContext';
 import { EncryptionProvider } from './contexts/EncryptionContext';
 import { AuthProvider } from './contexts/AuthContext';
 import WatchNotification from './components/WatchNotification';
+import { DebugPanel } from './components/DebugPanel';
 import './App.css';
 
 const App = () => {
@@ -31,6 +32,7 @@ const App = () => {
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                     <WatchNotification />
+                    <DebugPanel />
                     <Toaster />
                   </FitnessProvider>
                 </NotificationProvider>
