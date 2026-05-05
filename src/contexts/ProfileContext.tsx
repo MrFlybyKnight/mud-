@@ -85,10 +85,62 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentProfileId, setCurrentProfileId] = useState<string>(defaultProfile.id);
   const { toast } = useToast();
   const { isReady } = useEncryption();
+  const { uid } = useAuth();
   const [isSecureProfile, setIsSecureProfile] = useState<boolean>(false);
 
   // Get current profile
   const currentProfile = profiles.find(p => p.id === currentProfileId) || defaultProfile;
+
+  // Persist a profile to Firestore at users/{uid} (background, retry once).
+  const persistProfileToFirestore = (
+    profile: ProfileData,
+    partial?: Partial<ProfileData>,
+  ) => {
+    if (!uid) return;
+    // Strip non-serializable / undefined fields and convert Dates.
+    const payload: Record<string, unknown> = {
+      profileId: profile.id,
+      name: profile.name,
+      age: profile.age,
+      gender: profile.gender,
+      occupation: profile.occupation,
+      phoneNumber: profile.phoneNumber,
+      baselineHeartRateResting: profile.baselineHeartRateResting,
+      baselineHeartRateActive: profile.baselineHeartRateActive,
+      naturalSpeechRate: profile.naturalSpeechRate,
+      naturalSpeechVolume: profile.naturalSpeechVolume,
+      baselineSpeechTone: profile.baselineSpeechTone,
+      speechComplexityPreference: profile.speechComplexityPreference,
+      updatedAt: serverTimestamp(),
+    };
+    // If caller passed an explicit partial, merge those exact keys too so that
+    // calibration-only fields (baselineHeartRate, sigmaThreshold, etc.) sync.
+    if (partial) {
+      for (const [k, v] of Object.entries(partial)) {
+        if (v instanceof Date) payload[k] = v.toISOString();
+        else if (v !== undefined) payload[k] = v;
+      }
+    }
+
+    const write = () => setDoc(doc(db, 'users', uid), payload, { merge: true });
+    (async () => {
+      try {
+        await write();
+      } catch (e1) {
+        console.warn('[ProfileContext] Firestore write failed, retrying once:', e1);
+        try {
+          await write();
+        } catch (e2) {
+          console.error('[ProfileContext] Firestore write retry failed:', e2);
+          toast({
+            title: 'Sync failed',
+            description: 'Profile changes saved locally but could not sync to the cloud.',
+            variant: 'destructive',
+          });
+        }
+      }
+    })();
+  };
 
   // Load profiles from localStorage on initial load
   useEffect(() => {
