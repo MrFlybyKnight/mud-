@@ -425,21 +425,21 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
 
   if (!started) {
     return (
-      <div className="space-y-6 py-4 text-center">
-        <Mic size={64} className="mx-auto text-muted-foreground" />
-        <h3 className="text-lg font-semibold">Voice Baseline Calibration</h3>
-        <p className="text-muted-foreground">
+      <div className="space-y-6 py-6 text-center">
+        <Mic size={80} className="mx-auto text-muted-foreground" />
+        <h3 className="text-2xl md:text-3xl font-semibold">Voice Baseline Calibration</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           You'll read {total} short phrases aloud. MūD will listen and measure
           your speech rate and tone. Take your time — at least 8 seconds per phrase.
         </p>
-        <Button onClick={() => setStarted(true)}>Start Voice Calibration</Button>
+        <Button size="lg" className="text-lg" onClick={() => setStarted(true)}>Start Voice Calibration</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 py-8">
-      <div className="text-center text-sm font-medium text-muted-foreground tracking-wide uppercase">
+      <div className="text-center text-base font-medium text-muted-foreground tracking-wide uppercase">
         Phrase {index + 1} of {total}
       </div>
       <Progress value={overallProgress} max={100} className="h-1.5" />
@@ -452,7 +452,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
         <p className="text-3xl md:text-4xl font-semibold leading-relaxed tracking-tight">
           “{current.phrase}”
         </p>
-        <p className="text-sm text-muted-foreground italic">
+        <p className="text-base text-muted-foreground italic">
           {current.targetRange}
         </p>
       </div>
@@ -461,7 +461,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
         <div className="text-5xl font-light tabular-nums text-foreground">
           {secondsRemaining}s
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {canAdvance ? 'Ready when you are' : `Listening… ${MIN_PHRASE_SECONDS - elapsed}s until you can continue`}
         </p>
       </div>
