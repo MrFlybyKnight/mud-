@@ -98,14 +98,17 @@ const SetupWizard: React.FC = () => {
           { baselineHeartRate: calibrationValue, baselineHeartRateAt: serverTimestamp() },
           { merge: true }
         );
+        console.log('[SetupWizard] baselineHeartRate write SUCCEEDED for uid:', user.uid);
         toast({ title: 'Baseline heart rate saved', description: `${calibrationValue} BPM saved to cloud.` });
         setCalibrationValue(0);
         nextSetupStep();
-      } catch (e) {
-        console.error('[SetupWizard] Failed to save baselineHeartRate:', e);
+      } catch (e: any) {
+        const code = e?.code ?? 'unknown';
+        const message = e?.message ?? String(e);
+        console.error('[SetupWizard] baselineHeartRate write FAILED:', { code, message, error: e });
         toast({
           title: 'Save failed',
-          description: 'Could not save baseline heart rate. Please try again.',
+          description: `${code}: ${message}`,
           variant: 'destructive',
         });
       } finally {
