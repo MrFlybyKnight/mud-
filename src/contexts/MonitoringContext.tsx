@@ -771,6 +771,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const completeSetup = () => {
+    console.log('Navigating to dashboard');
     setIsSetupComplete(true);
     setSetupStep(0);
 
