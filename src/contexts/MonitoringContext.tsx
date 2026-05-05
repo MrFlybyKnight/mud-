@@ -84,6 +84,10 @@ interface MonitoringContextType {
   userActivityState: UserActivityState;
   activeSyncEndTime: Date | null;
   manualSync: () => Promise<void>;
+  uid: string | null;
+  lastWriteStatus: 'success' | 'failed' | 'queued' | 'none';
+  lastWriteAt: Date | null;
+  queuedMetricsCount: number;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
