@@ -847,7 +847,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     syncStatus,
     userActivityState,
     activeSyncEndTime,
-    manualSync
+    manualSync,
+    uid,
+    lastWriteStatus,
+    lastWriteAt,
+    queuedMetricsCount,
   };
   
   return (
