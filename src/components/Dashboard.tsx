@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import SetupWizard from './SetupWizard';
@@ -9,7 +9,7 @@ import SettingsDialog from './SettingsDialog';
 import EmergencyContactManager from './EmergencyContactManager';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
-import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play } from 'lucide-react';
+import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
