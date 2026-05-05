@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Phone, Trash2, UserPlus } from 'lucide-react';
+import { Phone, Trash2, UserPlus, Star, ContactRound } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -16,10 +16,30 @@ const POSITION_CLASS: Record<TrustedPosition, string> = {
 };
 
 const COLOR_BY_POSITION: Record<TrustedPosition, string> = {
-  topLeft: 'bg-rose-500',
+  topLeft: 'bg-teal-500',
   topRight: 'bg-amber-500',
   bottomLeft: 'bg-sky-500',
   bottomRight: 'bg-emerald-500',
+};
+
+const PRIMARY_POSITION: TrustedPosition = 'topLeft';
+
+// Web Contacts Picker API typing
+interface PickedContact {
+  name?: string[];
+  tel?: string[];
+}
+interface ContactsManager {
+  select: (props: string[], opts?: { multiple?: boolean }) => Promise<PickedContact[]>;
+}
+const getContactsManager = (): ContactsManager | null => {
+  const nav = navigator as Navigator & { contacts?: ContactsManager };
+  return nav.contacts && typeof nav.contacts.select === 'function' ? nav.contacts : null;
+};
+
+export const callPhone = (phone: string) => {
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  window.location.href = `tel:${cleaned}`;
 };
 
 const initials = (name: string) =>
