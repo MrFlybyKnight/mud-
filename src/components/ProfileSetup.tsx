@@ -1,11 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProfile } from '@/contexts/ProfileContext';
+import { useMonitoring } from '@/contexts/MonitoringContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/firebase/config';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -19,18 +24,62 @@ import { ArrowRight, UserRound } from 'lucide-react';
 
 const ProfileSetup: React.FC = () => {
   const { currentProfile, updateProfile } = useProfile();
+  const { baselineHeartRate, baselineVoiceSpeed } = useMonitoring();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: currentProfile.name || 'My Profile',
     age: currentProfile.age || '',
     gender: currentProfile.gender || '',
     occupation: currentProfile.occupation || '',
-    baselineHeartRateResting: currentProfile.baselineHeartRateResting || '',
-    naturalSpeechRate: currentProfile.naturalSpeechRate || '',
+    baselineHeartRateResting:
+      currentProfile.baselineHeartRateResting || baselineHeartRate || '',
+    naturalSpeechRate:
+      currentProfile.naturalSpeechRate || baselineVoiceSpeed || '',
     naturalSpeechVolume: currentProfile.naturalSpeechVolume || '',
     baselineSpeechTone: currentProfile.baselineSpeechTone || '',
     speechComplexityPreference: currentProfile.speechComplexityPreference || '',
   });
+
+  // Keep autopopulated baselines in sync with MonitoringContext.
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      baselineHeartRateResting:
+        prev.baselineHeartRateResting || baselineHeartRate || '',
+      naturalSpeechRate:
+        prev.naturalSpeechRate || baselineVoiceSpeed || '',
+    }));
+  }, [baselineHeartRate, baselineVoiceSpeed]);
+
+  // Fallback: hydrate baselines directly from Firestore if context is empty.
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (formData.baselineHeartRateResting && formData.naturalSpeechRate) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.data() as
+          | { baselineHeartRate?: number; baselineSpeechRate?: number; baselineVoiceSpeed?: number }
+          | undefined;
+        if (cancelled || !data) return;
+        const hr = data.baselineHeartRate;
+        const rate = data.baselineSpeechRate ?? data.baselineVoiceSpeed;
+        setFormData(prev => ({
+          ...prev,
+          baselineHeartRateResting: prev.baselineHeartRateResting || hr || '',
+          naturalSpeechRate: prev.naturalSpeechRate || rate || '',
+        }));
+      } catch (e) {
+        console.warn('[ProfileSetup] Failed to hydrate baselines from Firestore:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid]);
 
   const totalSteps = 3;
   
@@ -57,24 +106,55 @@ const ProfileSetup: React.FC = () => {
     }
   };
 
-  const handleComplete = () => {
-    // Convert numeric values
+  const handleComplete = async () => {
     const updatedProfile = {
       name: formData.name,
       age: formData.age ? parseInt(formData.age.toString(), 10) : null,
       gender: formData.gender || null,
       occupation: formData.occupation || null,
-      baselineHeartRateResting: formData.baselineHeartRateResting ? 
-        parseInt(formData.baselineHeartRateResting.toString(), 10) : null,
-      naturalSpeechRate: formData.naturalSpeechRate ? 
-        parseInt(formData.naturalSpeechRate.toString(), 10) : null,
-      naturalSpeechVolume: formData.naturalSpeechVolume ? 
-        parseInt(formData.naturalSpeechVolume.toString(), 10) : null,
+      baselineHeartRateResting: formData.baselineHeartRateResting
+        ? parseInt(formData.baselineHeartRateResting.toString(), 10)
+        : null,
+      naturalSpeechRate: formData.naturalSpeechRate
+        ? parseInt(formData.naturalSpeechRate.toString(), 10)
+        : null,
+      naturalSpeechVolume: formData.naturalSpeechVolume
+        ? parseInt(formData.naturalSpeechVolume.toString(), 10)
+        : null,
       baselineSpeechTone: formData.baselineSpeechTone || null,
       speechComplexityPreference: formData.speechComplexityPreference || null,
     };
-    
-    updateProfile(currentProfile.id, updatedProfile);
+
+    setIsSaving(true);
+    try {
+      if (user?.uid) {
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            name: updatedProfile.name,
+            age: updatedProfile.age,
+            gender: updatedProfile.gender,
+            occupation: updatedProfile.occupation,
+            baselineSpeechTone: updatedProfile.baselineSpeechTone,
+            speechComplexityPreference: updatedProfile.speechComplexityPreference,
+            profileCompletedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      // Update local context AFTER Firestore confirms — this flips
+      // isProfileComplete and Dashboard will render automatically.
+      updateProfile(currentProfile.id, updatedProfile);
+    } catch (e: any) {
+      console.error('[ProfileSetup] Failed to save profile:', e);
+      toast({
+        title: 'Save failed',
+        description: e?.message ?? 'Could not save profile.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const renderStep = () => {
@@ -260,9 +340,11 @@ const ProfileSetup: React.FC = () => {
             Back
           </Button>
           
-          <Button onClick={handleNext}>
+          <Button onClick={handleNext} disabled={isSaving}>
             {step < totalSteps ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+            ) : isSaving ? (
+              'Saving…'
             ) : (
               'Complete Setup'
             )}
