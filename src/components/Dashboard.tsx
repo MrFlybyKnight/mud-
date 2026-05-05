@@ -24,9 +24,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, BarChart2, AlertTriangle, Activity } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
-  const { isSetupComplete, startSetup, runInBackground, toggleBackgroundMode, currentEmergency, manualSync, syncStatus } = useMonitoring();
+  const { isSetupComplete, isSetupHydrating, startSetup, runInBackground, toggleBackgroundMode, currentEmergency, manualSync, syncStatus } = useMonitoring();
   const { isProfileComplete } = useProfile();
   const { platform, isIOS, isAndroid } = usePlatformContext();
+
+  // While checking Firestore for existing calibration, show a brief loader to
+  // avoid flashing the wizard for already-calibrated users.
+  if (isSetupHydrating) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
 
   // Show setup wizard if device calibration isn't complete
   if (!isSetupComplete) {
