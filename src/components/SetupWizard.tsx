@@ -235,24 +235,26 @@ const SetupWizard: React.FC = () => {
     <div className="container max-w-2xl mx-auto px-4 py-8">
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="text-xl text-center">
+          <CardTitle className="text-2xl md:text-3xl text-center">
             Setup Wizard: Step {setupStep} of 4
           </CardTitle>
         </CardHeader>
         <CardContent>
           {renderStepContent()}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-between items-center">
+          <div className="text-base text-muted-foreground">
             {setupStep}/4 steps complete
           </div>
           {setupStep !== 2 && (
             <Button
+              size="lg"
+              className="text-lg"
               onClick={handleNext}
               disabled={isCalibrating || isSaving || calibrationValue === 0}
             >
               {isSaving ? 'Saving...' : setupStep < 4 ? (
-                <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                <>Next <ArrowRight className="ml-2 h-5 w-5" /></>
               ) : (
                 'Complete Setup'
               )}
@@ -280,14 +282,14 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
   startCalibration 
 }) => {
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-6">
       <div className="flex justify-center">
-        <Heart size={64} className={`${isCalibrating ? 'text-red-500 pulse-animation' : 'text-muted-foreground'}`} />
+        <Heart size={80} className={`${isCalibrating ? 'text-red-500 pulse-animation' : 'text-muted-foreground'}`} />
       </div>
       
-      <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">Heart Rate Calibration</h3>
-        <p className="text-muted-foreground">
+      <div className="text-center space-y-4">
+        <h3 className="text-2xl md:text-3xl font-semibold">Heart Rate Calibration</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           We need to measure your resting heart rate for 30 seconds.
           Please sit comfortably and remain still.
         </p>
@@ -295,20 +297,20 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
       
       {isCalibrating ? (
         <div className="space-y-4">
-          <div className="flex justify-center">
-            <TimerIcon className="mr-2" /> 
+          <div className="flex justify-center items-center text-xl">
+            <TimerIcon className="mr-2 h-6 w-6" /> 
             <span>{secondsLeft} seconds remaining</span>
           </div>
           <Progress value={progress} max={100} className="h-2" />
         </div>
       ) : calibrationValue > 0 ? (
         <div className="text-center space-y-2">
-          <div className="text-2xl font-bold">{calibrationValue} BPM</div>
-          <p>Baseline heart rate recorded</p>
+          <div className="text-4xl font-bold">{calibrationValue} BPM</div>
+          <p className="text-lg">Baseline heart rate recorded</p>
         </div>
       ) : (
         <div className="flex justify-center">
-          <Button onClick={startCalibration}>
+          <Button size="lg" className="text-lg" onClick={startCalibration}>
             Start Heart Rate Measurement
           </Button>
         </div>
@@ -344,35 +346,35 @@ const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({
       : 'Please read the text clearly, emphasizing pronunciation.';
   
   return (
-    <div className="space-y-6 py-4">
+    <div className="space-y-8 py-6">
       <div className="flex justify-center">
-        <Mic size={64} className={`${isCalibrating ? 'text-blue-500 pulse-animation' : 'text-muted-foreground'}`} />
+        <Mic size={80} className={`${isCalibrating ? 'text-blue-500 pulse-animation' : 'text-muted-foreground'}`} />
       </div>
       
-      <div className="text-center space-y-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-muted-foreground">{description}</p>
+      <div className="text-center space-y-4">
+        <h3 className="text-2xl md:text-3xl font-semibold">{title}</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">{description}</p>
       </div>
       
       {isCalibrating ? (
-        <div className="space-y-4">
-          <div className="p-4 bg-accent rounded-lg text-sm">
+        <div className="space-y-6">
+          <div className="p-6 bg-accent rounded-lg text-xl md:text-2xl leading-relaxed text-center">
             {prompt}
           </div>
-          <div className="flex justify-center">
-            <TimerIcon className="mr-2" /> 
+          <div className="flex justify-center items-center text-xl">
+            <TimerIcon className="mr-2 h-6 w-6" /> 
             <span>{secondsLeft} seconds remaining</span>
           </div>
           <Progress value={progress} max={100} className="h-2" />
         </div>
       ) : calibrationValue > 0 ? (
         <div className="text-center space-y-2">
-          <div className="text-2xl font-bold">{calibrationValue}</div>
-          <p>Baseline {type} recorded</p>
+          <div className="text-4xl font-bold">{calibrationValue}</div>
+          <p className="text-lg">Baseline {type} recorded</p>
         </div>
       ) : (
         <div className="flex justify-center">
-          <Button onClick={startCalibration}>
+          <Button size="lg" className="text-lg" onClick={startCalibration}>
             Start Voice {type.charAt(0).toUpperCase() + type.slice(1)} Calibration
           </Button>
         </div>
@@ -423,21 +425,21 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
 
   if (!started) {
     return (
-      <div className="space-y-6 py-4 text-center">
-        <Mic size={64} className="mx-auto text-muted-foreground" />
-        <h3 className="text-lg font-semibold">Voice Baseline Calibration</h3>
-        <p className="text-muted-foreground">
+      <div className="space-y-6 py-6 text-center">
+        <Mic size={80} className="mx-auto text-muted-foreground" />
+        <h3 className="text-2xl md:text-3xl font-semibold">Voice Baseline Calibration</h3>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           You'll read {total} short phrases aloud. MūD will listen and measure
           your speech rate and tone. Take your time — at least 8 seconds per phrase.
         </p>
-        <Button onClick={() => setStarted(true)}>Start Voice Calibration</Button>
+        <Button size="lg" className="text-lg" onClick={() => setStarted(true)}>Start Voice Calibration</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 py-8">
-      <div className="text-center text-sm font-medium text-muted-foreground tracking-wide uppercase">
+      <div className="text-center text-base font-medium text-muted-foreground tracking-wide uppercase">
         Phrase {index + 1} of {total}
       </div>
       <Progress value={overallProgress} max={100} className="h-1.5" />
@@ -450,7 +452,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
         <p className="text-3xl md:text-4xl font-semibold leading-relaxed tracking-tight">
           “{current.phrase}”
         </p>
-        <p className="text-sm text-muted-foreground italic">
+        <p className="text-base text-muted-foreground italic">
           {current.targetRange}
         </p>
       </div>
@@ -459,7 +461,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
         <div className="text-5xl font-light tabular-nums text-foreground">
           {secondsRemaining}s
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {canAdvance ? 'Ready when you are' : `Listening… ${MIN_PHRASE_SECONDS - elapsed}s until you can continue`}
         </p>
       </div>
@@ -467,6 +469,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
       <div className="flex justify-center pt-4">
         <Button
           size="lg"
+          className="text-lg"
           variant={canAdvance ? 'default' : 'outline'}
           disabled={!canAdvance || isSaving}
           onClick={handleNextPhrase}
@@ -475,7 +478,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
             ? 'Saving...'
             : isLast
               ? 'Complete Calibration'
-              : <>Next Phrase <ArrowRight className="ml-2 h-4 w-4" /></>}
+              : <>Next Phrase <ArrowRight className="ml-2 h-5 w-5" /></>}
         </Button>
       </div>
     </div>
