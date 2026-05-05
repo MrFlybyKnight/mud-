@@ -31,6 +31,7 @@ const Dashboard: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [circleOpen, setCircleOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trustedOpen, setTrustedOpen] = useState(false);
 
   if (isSetupHydrating) {
     return (
@@ -144,33 +145,49 @@ const Dashboard: React.FC = () => {
         {/* Bottom row */}
         <nav className="shrink-0 grid grid-cols-3 gap-3 pb-1">
           <BottomButton icon={History} label="History" onClick={() => setHistoryOpen(true)} />
-          <BottomButton icon={Users} label="Trusted" onClick={() => setCircleOpen(true)} />
+          <BottomButton icon={Users} label="Trusted" onClick={() => setTrustedOpen(true)} />
           <BottomButton icon={Settings} label="Settings" onClick={() => setSettingsOpen(true)} />
         </nav>
       </div>
 
-      {/* Hidden mounted dialogs driven by bottom row */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>History</DialogTitle></DialogHeader>
           <AssessmentsDisplay />
         </DialogContent>
       </Dialog>
 
-      <Dialog open={circleOpen} onOpenChange={setCircleOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={trustedOpen} onOpenChange={setTrustedOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Trusted Circle</DialogTitle></DialogHeader>
           <EmergencyContactManager />
         </DialogContent>
       </Dialog>
 
-      {/* SettingsDialog already includes its own trigger; we forward via a hidden trigger */}
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Settings</DialogTitle></DialogHeader>
-          <SettingsDialog />
-        </DialogContent>
-      </Dialog>
+      {/* SettingsDialog renders its own Dialog; mount only when opened */}
+      {settingsOpen && (
+        <SettingsDialogPortal onClose={() => setSettingsOpen(false)} />
+      )}
+    </div>
+  );
+};
+
+const SettingsDialogPortal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  // Auto-click the SettingsDialog trigger after mount, then unmount on close.
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const btn = ref.current?.querySelector('button');
+    btn?.click();
+    const observer = new MutationObserver(() => {
+      // If the dialog content disappears, fire onClose.
+      if (!document.querySelector('[role="dialog"]')) onClose();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [onClose]);
+  return (
+    <div ref={ref} className="hidden">
+      <SettingsDialog />
     </div>
   );
 };
