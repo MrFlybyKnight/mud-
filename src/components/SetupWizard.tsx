@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { upsertUserProfile } from '@/firebase/firestore';
 import { useToast } from '@/components/ui/use-toast';
 import { db } from '@/firebase/config';
@@ -26,6 +27,7 @@ const SetupWizard: React.FC = () => {
     startSetup,
   } = useMonitoring();
   const { user } = useAuth();
+  const { currentProfile, updateProfile } = useProfile();
   const { toast } = useToast();
 
   // Ensure the wizard begins at step 1 when shown.
@@ -106,7 +108,14 @@ const SetupWizard: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, { rate, toneAverage, accentProfile });
+      // Sigma approximation: 12% of resting baseline (rounded to 1 decimal).
+      const sigmaThreshold = baselineHeartRate > 0
+        ? Math.round(baselineHeartRate * 0.12 * 10) / 10
+        : null;
+
+      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, {
+        rate, toneAverage, accentProfile, sigmaThreshold,
+      });
       await setDoc(
         doc(db, 'users', user.uid),
         {
@@ -114,11 +123,27 @@ const SetupWizard: React.FC = () => {
           baselineVoiceToneAverage: toneAverage,
           baselineAccentProfile: accentProfile,
           baselineVoiceCalibrationAt: serverTimestamp(),
+          sigmaThreshold,
         },
         { merge: true },
       );
       setBaselineVoiceSpeed(rate);
       setBaselineVoiceTone(toneAverage);
+
+      // Autopopulate the local profile context with all calibration data so
+      // the Edit Profile screen shows it immediately.
+      updateProfile(currentProfile.id, {
+        baselineHeartRate,
+        baselineHeartRateAt: new Date(),
+        baselineHeartRateResting: baselineHeartRate,
+        baselineVoiceToneAverage: toneAverage,
+        baselineSpeechRate: rate,
+        naturalSpeechRate: rate,
+        baselineAccentProfile: accentProfile,
+        baselineVoiceCalibrationAt: new Date(),
+        sigmaThreshold,
+      });
+
       toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
 
       if (user) {
