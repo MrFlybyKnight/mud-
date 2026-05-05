@@ -639,10 +639,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setLastAssessmentTime(null);
     setIsMonitoring(true); // Start monitoring automatically after setup
     
-    // Initialize sync
+    // Sync is manual only — no automatic scheduling.
     setLastSyncTime(null);
     setSyncStatus('none');
-    scheduleSyncBasedOnActivity('idle');
   };
 
   const nextSetupStep = () => {
