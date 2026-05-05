@@ -1,8 +1,7 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, Check, Trash, X, MessageCircle, Heart, Smile } from 'lucide-react';
+import { Bell, Check, Trash, X, MessageCircle, Heart, Smile, Pencil } from 'lucide-react';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
@@ -11,6 +10,49 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { SuggestionType } from '@/utils/notificationUtils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+type Frequency = 'low' | 'medium' | 'high';
+interface NotificationPrefs {
+  heartEnabled: boolean;
+  speechEnabled: boolean;
+  emotionEnabled: boolean;
+  frequency: Frequency;
+  sensitivity: number; // 0-100
+}
+const PREFS_KEY = 'notificationPrefs';
+const DEFAULT_PREFS: NotificationPrefs = {
+  heartEnabled: true,
+  speechEnabled: true,
+  emotionEnabled: true,
+  frequency: 'medium',
+  sensitivity: 50,
+};
+const loadPrefs = (): NotificationPrefs => {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS;
+  } catch {
+    return DEFAULT_PREFS;
+  }
+};
 
 const NotificationCenter = () => {
   const { 
@@ -23,7 +65,12 @@ const NotificationCenter = () => {
   } = useNotification();
   
   const { platform } = usePlatformContext();
-  
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(() => loadPrefs());
+  useEffect(() => {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
+  }, [prefs]);
+
   const buttonClass = platformClass(platform, {
     base: "h-8 rounded-full",
     ios: "px-3",
@@ -86,18 +133,18 @@ const NotificationCenter = () => {
           <div className="flex gap-1">
             {notifications.length > 0 && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className={buttonClass} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={buttonClass}
                   onClick={markAllAsRead}
                   title="Mark all as read"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className={buttonClass}
                   onClick={clearAllNotifications}
                   title="Clear all notifications"
@@ -106,6 +153,16 @@ const NotificationCenter = () => {
                 </Button>
               </>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={buttonClass}
+              onClick={() => setPrefsOpen(true)}
+              title="Edit notification preferences"
+              aria-label="Edit notification preferences"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         
@@ -166,6 +223,90 @@ const NotificationCenter = () => {
           )}
         </ScrollArea>
       </PopoverContent>
+
+      <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Notification preferences</DialogTitle>
+            <DialogDescription>
+              Choose what you'd like to be nudged about, how often, and how sensitive the triggers should be.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pref-heart" className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-red-500" /> Heart rate
+                </Label>
+                <Switch
+                  id="pref-heart"
+                  checked={prefs.heartEnabled}
+                  onCheckedChange={(v) => setPrefs((p) => ({ ...p, heartEnabled: v }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pref-speech" className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-blue-500" /> Speech patterns
+                </Label>
+                <Switch
+                  id="pref-speech"
+                  checked={prefs.speechEnabled}
+                  onCheckedChange={(v) => setPrefs((p) => ({ ...p, speechEnabled: v }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pref-emotion" className="flex items-center gap-2">
+                  <Smile className="h-4 w-4 text-amber-500" /> Emotion check-ins
+                </Label>
+                <Switch
+                  id="pref-emotion"
+                  checked={prefs.emotionEnabled}
+                  onCheckedChange={(v) => setPrefs((p) => ({ ...p, emotionEnabled: v }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="pref-frequency">Frequency</Label>
+              <Select
+                value={prefs.frequency}
+                onValueChange={(v: Frequency) => setPrefs((p) => ({ ...p, frequency: v }))}
+              >
+                <SelectTrigger id="pref-frequency"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low — only the important stuff</SelectItem>
+                  <SelectItem value="medium">Medium — balanced</SelectItem>
+                  <SelectItem value="high">High — keep me in the loop</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pref-sensitivity">Sensitivity</Label>
+                <span className="text-xs text-muted-foreground tabular-nums">{prefs.sensitivity}</span>
+              </div>
+              <Slider
+                id="pref-sensitivity"
+                min={0}
+                max={100}
+                step={5}
+                value={[prefs.sensitivity]}
+                onValueChange={([v]) => setPrefs((p) => ({ ...p, sensitivity: v }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Higher sensitivity = nudges trigger sooner.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPrefs(DEFAULT_PREFS)}>Reset</Button>
+            <Button onClick={() => setPrefsOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Popover>
   );
 };
