@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { upsertUserProfile } from '@/firebase/firestore';
+import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +19,8 @@ const SetupWizard: React.FC = () => {
     setBaselineVoiceTone,
     setBaselineVoiceAccent,
   } = useMonitoring();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const [progress, setProgress] = useState(0);
   const [calibrationValue, setCalibrationValue] = useState(0);
@@ -75,11 +80,27 @@ const SetupWizard: React.FC = () => {
     setSecondsLeft(setupStep === 1 ? 30 : 10);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setCalibrationValue(0);
     if (setupStep < 4) {
       nextSetupStep();
     } else {
+      if (user) {
+        try {
+          await upsertUserProfile(user.uid, {
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          });
+        } catch (e) {
+          console.error('Failed to create user profile:', e);
+          toast({
+            title: 'Profile save failed',
+            description: 'We could not save your profile to the cloud.',
+            variant: 'destructive',
+          });
+        }
+      }
       completeSetup();
     }
   };
