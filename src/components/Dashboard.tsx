@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import SetupWizard from './SetupWizard';
@@ -9,7 +9,7 @@ import SettingsDialog from './SettingsDialog';
 import EmergencyContactManager from './EmergencyContactManager';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
-import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play } from 'lucide-react';
+import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +30,25 @@ const Dashboard: React.FC = () => {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [trustedOpen, setTrustedOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const onStart = () => {
+      setProfileSaving(true);
+      // Ensure the indicator is visible for at least ~2.5s for a smooth feel.
+      window.setTimeout(() => setProfileSaving(false), 2500);
+    };
+    const onEnd = () => {
+      // No-op — timer above controls dismissal. Kept for symmetry/future use.
+    };
+    window.addEventListener('profile-save-start', onStart);
+    window.addEventListener('profile-save-end', onEnd);
+    return () => {
+      window.removeEventListener('profile-save-start', onStart);
+      window.removeEventListener('profile-save-end', onEnd);
+    };
+  }, []);
 
   if (isSetupHydrating) {
     return (
@@ -177,6 +195,13 @@ const Dashboard: React.FC = () => {
       >
         <SettingsDialog />
       </div>
+
+      {profileSaving && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-4 py-2 text-xs text-slate-200 shadow-lg backdrop-blur animate-fade-in">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-400" />
+          Setting up your profile…
+        </div>
+      )}
     </div>
   );
 };
