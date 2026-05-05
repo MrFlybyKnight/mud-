@@ -219,8 +219,6 @@ const Dashboard: React.FC = () => {
         </nav>
       </div>
 
-      {historyOpen && <HistoryScreen onBack={() => setHistoryOpen(false)} />}
-
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} hideTrigger />
 
       {profileSaving && (
