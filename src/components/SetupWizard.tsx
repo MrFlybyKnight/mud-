@@ -78,6 +78,8 @@ const SetupWizard: React.FC = () => {
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const [voiceBaseline, setVoiceBaseline] = useState<{ rate: number; tone: number } | null>(null);
+
   const handleNext = async () => {
     if (setupStep === 1) {
       if (!user?.uid) {
@@ -112,6 +114,39 @@ const SetupWizard: React.FC = () => {
       return;
     }
 
+    if (setupStep === 2) {
+      if (!user?.uid) {
+        toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
+        return;
+      }
+      if (!voiceBaseline) return;
+      setIsSaving(true);
+      try {
+        console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, voiceBaseline);
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            baselineSpeechRate: voiceBaseline.rate,
+            baselineVoiceTone: voiceBaseline.tone,
+            baselineVoiceCalibrationAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        setBaselineVoiceSpeed(voiceBaseline.rate);
+        setBaselineVoiceTone(voiceBaseline.tone);
+        toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
+        setCalibrationValue(0);
+        setVoiceBaseline(null);
+        nextSetupStep();
+      } catch (e) {
+        console.error('[SetupWizard] Failed to save voice baseline:', e);
+        toast({ title: 'Save failed', description: 'Could not save voice baseline. Please try again.', variant: 'destructive' });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     setCalibrationValue(0);
     if (setupStep < 4) {
       nextSetupStep();
@@ -135,6 +170,7 @@ const SetupWizard: React.FC = () => {
       completeSetup();
     }
   };
+
 
   const renderStepContent = () => {
     switch (setupStep) {
