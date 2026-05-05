@@ -3,7 +3,7 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
-import BodyHeatmap from './BodyHeatmap';
+import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
 import SettingsDialog from './SettingsDialog';
 import EmergencyContactManager from './EmergencyContactManager';
@@ -100,7 +100,7 @@ const Dashboard: React.FC = () => {
           <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
             {currentEmotion}
           </h2>
-          <BodyHeatmap emotion={currentEmotion} className="mt-2 h-full max-h-[42vh] w-auto" />
+          <MoodCow emotion={currentEmotion} className="mt-2 h-full max-h-[42vh] w-auto" />
         </section>
 
         {/* Vitals row */}
