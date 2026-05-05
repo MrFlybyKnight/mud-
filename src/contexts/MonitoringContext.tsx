@@ -755,6 +755,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleTalking = () => setIsTalking(prev => !prev);
   const toggleBackgroundMode = () => setRunInBackground(prev => !prev);
   const resolveEmergency = () => setCurrentEmergency('none');
+  const clearEmergency = () => setPendingEmergency(null);
   
   // Setup functions
   const startSetup = () => {
