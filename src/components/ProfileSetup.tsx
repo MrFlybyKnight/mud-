@@ -340,9 +340,11 @@ const ProfileSetup: React.FC = () => {
             Back
           </Button>
           
-          <Button onClick={handleNext}>
+          <Button onClick={handleNext} disabled={isSaving}>
             {step < totalSteps ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+            ) : isSaving ? (
+              'Saving…'
             ) : (
               'Complete Setup'
             )}
