@@ -8,6 +8,7 @@ import NotificationCenter from './NotificationCenter';
 import SettingsDialog from './SettingsDialog';
 import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
+import EmotionTimelineBar from './EmotionTimelineBar';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
@@ -130,6 +131,9 @@ const Dashboard: React.FC = () => {
             <TrustedCircleOverlay />
           </div>
         </section>
+
+        {/* Emotion timeline (last 6h) */}
+        <EmotionTimelineBar onOpen={() => setHistoryOpen(true)} className="shrink-0" />
 
         {/* Vitals row */}
         <section className="grid grid-cols-2 gap-3 shrink-0">
