@@ -161,6 +161,15 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lastWriteAt, setLastWriteAt] = useState<Date | null>(null);
   const [queuedMetricsCount, setQueuedMetricsCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rolling aggregation buffers
+  const rollingBufferRef = useRef<{
+    heartRates: number[];
+    speechRates: number[];
+    speechTimes: number[];
+    emotions: EmotionType[];
+    windowStart: number;
+  }>({ heartRates: [], speechRates: [], speechTimes: [], emotions: [], windowStart: Date.now() });
   
   const { toast } = useToast();
   const { uid } = useAuth();
