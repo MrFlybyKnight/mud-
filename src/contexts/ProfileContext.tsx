@@ -249,7 +249,10 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     setProfiles(prev => [...prev, newProfile]);
     setCurrentProfileId(newProfile.id);
-    
+
+    // Persist to Firestore in the background.
+    persistProfileToFirestore(newProfile);
+
     toast({
       title: "Profile Created",
       description: `Profile "${newProfile.name}" has been created`,
