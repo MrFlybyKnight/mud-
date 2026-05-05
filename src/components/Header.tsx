@@ -74,9 +74,11 @@ const Header: React.FC = () => {
               Sign in with Google
             </Button>
           )}
-          <Button 
+          <Button
             onClick={toggleMonitoring}
-            variant={isMonitoring ? "destructive" : "default"}
+            variant={isMonitoring ? "destructive" : "secondary"}
+            aria-pressed={isMonitoring}
+            aria-label={isMonitoring ? 'Pause monitoring' : 'Resume monitoring'}
           >
             {isMonitoring ? "Pause Monitoring" : "Resume Monitoring"}
           </Button>
