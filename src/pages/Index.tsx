@@ -20,6 +20,7 @@ const AppContent: React.FC = () => {
       toggleMonitoring();
     }
     if (isSetupComplete) {
+      console.log('Navigating to dashboard');
       manualSync();
     }
 

@@ -24,7 +24,7 @@ import { ArrowRight, UserRound } from 'lucide-react';
 
 const ProfileSetup: React.FC = () => {
   const { currentProfile, updateProfile } = useProfile();
-  const { baselineHeartRate, baselineVoiceSpeed } = useMonitoring();
+  const { baselineHeartRate, baselineVoiceSpeed, completeSetup, isSetupComplete } = useMonitoring();
   const { user } = useAuth();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
@@ -145,6 +145,12 @@ const ProfileSetup: React.FC = () => {
       // Update local context AFTER Firestore confirms — this flips
       // isProfileComplete and Dashboard will render automatically.
       updateProfile(currentProfile.id, updatedProfile);
+      // Force the top-level routing to swap from SetupWizard to Dashboard.
+      if (!isSetupComplete) {
+        completeSetup();
+      } else {
+        console.log('Navigating to dashboard');
+      }
     } catch (e: any) {
       console.error('[ProfileSetup] Failed to save profile:', e);
       toast({
