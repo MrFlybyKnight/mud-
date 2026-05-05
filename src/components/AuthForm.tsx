@@ -111,10 +111,13 @@ export default function AuthForm() {
                 setBusy(true);
                 try {
                   await signInWithGoogle();
-                } catch (err) {
+                } catch (err: any) {
+                  const code = err?.code ?? "unknown";
+                  const message = err?.message ?? String(err);
+                  console.error("[Google sign-in failed]", { code, message, error: err });
                   toast({
                     title: "Google sign-in failed",
-                    description: err instanceof Error ? err.message : String(err),
+                    description: `${code}: ${message}`,
                     variant: "destructive",
                   });
                 } finally {
