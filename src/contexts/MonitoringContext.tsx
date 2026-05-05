@@ -314,7 +314,12 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
-    log('start', { uidPresent: Boolean(uid), uid: uid ?? null, heartRate, speechPercentage, currentEmotion });
+    if (!uid) {
+      console.log('performSync skipped - no uid');
+      return;
+    }
+
+    log('start', { uidPresent: Boolean(uid), uid, heartRate, speechPercentage, currentEmotion });
     setSyncStatus('in-progress');
 
     try {
