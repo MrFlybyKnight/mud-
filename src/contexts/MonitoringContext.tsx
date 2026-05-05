@@ -233,20 +233,31 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
   
-  // Data sync effect - handles the automatic sync scheduling 
+  // Delay first sync after setup completes so AuthContext has time to resolve uid
+  const [syncReady, setSyncReady] = useState<boolean>(false);
   useEffect(() => {
-    if (!isSetupComplete || !isMonitoring) return;
-    
+    if (!isSetupComplete) {
+      setSyncReady(false);
+      return;
+    }
+    const t = setTimeout(() => setSyncReady(true), 5000);
+    return () => clearTimeout(t);
+  }, [isSetupComplete]);
+
+  // Data sync effect - handles the automatic sync scheduling
+  useEffect(() => {
+    if (!isSetupComplete || !isMonitoring || !syncReady) return;
+
     // Don't run if app is in background and background mode is disabled
     if (!isAppForeground.current && !runInBackground) return;
-    
+
     const now = new Date();
     const isActiveSync = activeSyncEndTime !== null && now < activeSyncEndTime;
     const currentActivityState = isActiveSync ? 'active' : userActivityState;
-    
+
     // Schedule sync based on activity state
     scheduleSyncBasedOnActivity(currentActivityState);
-    
+
     // Cleanup function to clear timeout on unmount or dependency change
     return () => {
       if (syncTimeoutRef.current) {
@@ -255,13 +266,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     };
   }, [
-    isSetupComplete, 
-    isMonitoring, 
-    runInBackground, 
-    userActivityState, 
-    lastSyncTime, 
-    activeSyncEndTime, 
-    syncStatus
+    isSetupComplete,
+    isMonitoring,
+    runInBackground,
+    userActivityState,
+    lastSyncTime,
+    activeSyncEndTime,
+    syncStatus,
+    syncReady,
   ]);
   
   // Schedule data sync based on user activity state
@@ -314,7 +326,12 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
-    log('start', { uidPresent: Boolean(uid), uid: uid ?? null, heartRate, speechPercentage, currentEmotion });
+    if (!uid) {
+      console.log('performSync skipped - no uid');
+      return;
+    }
+
+    log('start', { uidPresent: Boolean(uid), uid, heartRate, speechPercentage, currentEmotion });
     setSyncStatus('in-progress');
 
     try {
