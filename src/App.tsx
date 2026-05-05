@@ -11,6 +11,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { EncryptionProvider } from './contexts/EncryptionContext';
+import { AuthProvider } from './contexts/AuthContext';
 import WatchNotification from './components/WatchNotification';
 import './App.css';
 
@@ -18,6 +19,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <ThemeProvider>
+        <AuthProvider>
         <EncryptionProvider>
           <PlatformProvider>
             <ProfileProvider>
@@ -36,6 +38,7 @@ const App = () => {
             </ProfileProvider>
           </PlatformProvider>
         </EncryptionProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   );
