@@ -10,17 +10,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Heart, Mic, TimerIcon, ArrowRight } from 'lucide-react';
-import { calibrationSequence } from '@/data/calibrationSequence';
+import { calibrationSequence, type CalibrationPhrase } from '@/data/calibrationSequence';
+
+const TOTAL_STEPS = 2;
 
 const SetupWizard: React.FC = () => {
-  const { 
-    setupStep, 
-    nextSetupStep, 
-    completeSetup, 
+  const {
+    setupStep,
+    nextSetupStep,
+    completeSetup,
     setBaselineHeartRate,
     setBaselineVoiceSpeed,
     setBaselineVoiceTone,
-    setBaselineVoiceAccent,
   } = useMonitoring();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -29,79 +30,75 @@ const SetupWizard: React.FC = () => {
   const [calibrationValue, setCalibrationValue] = useState(0);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(30);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isCalibrating) return;
-    
-    let timer: ReturnType<typeof setTimeout>;
-    
-    const totalDuration = setupStep === 1 ? 30 : 10;
-
-    timer = setInterval(() => {
+    const totalDuration = 30;
+    const timer = setInterval(() => {
       let finished = false;
       setSecondsLeft(prev => {
         const next = prev - 1;
-        if (next <= 0) {
-          finished = true;
-          return 0;
-        }
+        if (next <= 0) { finished = true; return 0; }
         setProgress(((totalDuration - next) / totalDuration) * 100);
         return next;
       });
-
       if (finished) {
         clearInterval(timer);
         setIsCalibrating(false);
-        if (setupStep === 1) {
-          const simulatedHeartRate = Math.round(60 + Math.random() * 40);
-          setBaselineHeartRate(simulatedHeartRate);
-          setCalibrationValue(simulatedHeartRate);
-        } else {
-          const simulatedValue = Math.round(40 + Math.random() * 60);
-          if (setupStep === 2) setBaselineVoiceSpeed(simulatedValue);
-          else if (setupStep === 3) setBaselineVoiceTone(simulatedValue);
-          else if (setupStep === 4) setBaselineVoiceAccent(simulatedValue);
-          setCalibrationValue(simulatedValue);
-        }
+        const simulatedHeartRate = Math.round(60 + Math.random() * 40);
+        setBaselineHeartRate(simulatedHeartRate);
+        setCalibrationValue(simulatedHeartRate);
       }
     }, 1000);
-    
     return () => clearInterval(timer);
-  }, [isCalibrating, setupStep, setBaselineHeartRate, setBaselineVoiceSpeed, setBaselineVoiceTone, setBaselineVoiceAccent]);
+  }, [isCalibrating, setBaselineHeartRate]);
 
   const startCalibration = () => {
     setIsCalibrating(true);
     setCalibrationValue(0);
     setProgress(0);
-    setSecondsLeft(setupStep === 1 ? 30 : 10);
+    setSecondsLeft(30);
   };
 
-  const [isSaving, setIsSaving] = useState(false);
-
-  const [voiceBaseline, setVoiceBaseline] = useState<{ rate: number; tone: number } | null>(null);
-
-  const saveVoiceBaseline = async (rate: number, tone: number) => {
+  const saveVoiceBaseline = async (
+    rate: number,
+    toneAverage: number,
+    accentProfile: Record<string, number>,
+  ) => {
     if (!user?.uid) {
       toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
       return;
     }
     setIsSaving(true);
     try {
-      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, { rate, tone });
+      console.log('[SetupWizard] Writing voice baseline for uid:', user.uid, { rate, toneAverage, accentProfile });
       await setDoc(
         doc(db, 'users', user.uid),
         {
           baselineSpeechRate: rate,
-          baselineVoiceTone: tone,
+          baselineVoiceToneAverage: toneAverage,
+          baselineAccentProfile: accentProfile,
           baselineVoiceCalibrationAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       );
       setBaselineVoiceSpeed(rate);
-      setBaselineVoiceTone(tone);
+      setBaselineVoiceTone(toneAverage);
       toast({ title: 'Voice baseline saved', description: 'Calibration complete.' });
-      setCalibrationValue(0);
-      nextSetupStep();
+
+      if (user) {
+        try {
+          await upsertUserProfile(user.uid, {
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+          });
+        } catch (e) {
+          console.error('Failed to upsert user profile:', e);
+        }
+      }
+      completeSetup();
     } catch (e: any) {
       const code = e?.code ?? 'unknown';
       const message = e?.message ?? String(e);
@@ -115,11 +112,7 @@ const SetupWizard: React.FC = () => {
   const handleNext = async () => {
     if (setupStep === 1) {
       if (!user?.uid) {
-        toast({
-          title: 'Not signed in',
-          description: 'Please sign in before continuing.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Not signed in', description: 'Please sign in before continuing.', variant: 'destructive' });
         return;
       }
       setIsSaving(true);
@@ -128,7 +121,7 @@ const SetupWizard: React.FC = () => {
         await setDoc(
           doc(db, 'users', user.uid),
           { baselineHeartRate: calibrationValue, baselineHeartRateAt: serverTimestamp() },
-          { merge: true }
+          { merge: true },
         );
         console.log('[SetupWizard] baselineHeartRate write SUCCEEDED for uid:', user.uid);
         toast({ title: 'Baseline heart rate saved', description: `${calibrationValue} BPM saved to cloud.` });
@@ -138,52 +131,19 @@ const SetupWizard: React.FC = () => {
         const code = e?.code ?? 'unknown';
         const message = e?.message ?? String(e);
         console.error('[SetupWizard] baselineHeartRate write FAILED:', { code, message, error: e });
-        toast({
-          title: 'Save failed',
-          description: `${code}: ${message}`,
-          variant: 'destructive',
-        });
+        toast({ title: 'Save failed', description: `${code}: ${message}`, variant: 'destructive' });
       } finally {
         setIsSaving(false);
       }
-      return;
     }
-
-    if (setupStep === 2) {
-      // Step 2 advances itself via VoiceSequenceCalibration's "Complete Calibration" button.
-      return;
-    }
-
-    setCalibrationValue(0);
-    if (setupStep < 4) {
-      nextSetupStep();
-    } else {
-      if (user) {
-        try {
-          await upsertUserProfile(user.uid, {
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-          });
-        } catch (e) {
-          console.error('Failed to create user profile:', e);
-          toast({
-            title: 'Profile save failed',
-            description: 'We could not save your profile to the cloud.',
-            variant: 'destructive',
-          });
-        }
-      }
-      completeSetup();
-    }
+    // Step 2 advances itself via "Complete Calibration" inside VoiceSequenceCalibration.
   };
-
 
   const renderStepContent = () => {
     switch (setupStep) {
       case 1:
         return (
-          <HeartRateCalibration 
+          <HeartRateCalibration
             isCalibrating={isCalibrating}
             progress={progress}
             secondsLeft={secondsLeft}
@@ -194,36 +154,8 @@ const SetupWizard: React.FC = () => {
       case 2:
         return (
           <VoiceSequenceCalibration
-            onFinalize={async (rate, tone) => {
-              setVoiceBaseline({ rate, tone });
-              await saveVoiceBaseline(rate, tone);
-            }}
+            onFinalize={saveVoiceBaseline}
             isSaving={isSaving}
-          />
-        );
-
-      case 3:
-        return (
-          <VoiceCalibration 
-            type="tone"
-            isCalibrating={isCalibrating}
-            progress={progress}
-            secondsLeft={secondsLeft}
-            calibrationValue={calibrationValue}
-            startCalibration={startCalibration}
-            prompt="Please read the following with different emotional tones (happy, neutral, concerned): 'I just heard the news. That's really interesting. We should discuss this further.'"
-          />
-        );
-      case 4:
-        return (
-          <VoiceCalibration 
-            type="accent"
-            isCalibrating={isCalibrating}
-            progress={progress}
-            secondsLeft={secondsLeft}
-            calibrationValue={calibrationValue}
-            startCalibration={startCalibration}
-            prompt="Please read the following clearly, emphasizing each word: 'Pronunciation varies across regions and accents. Each word has its unique sound and rhythm.'"
           />
         );
       default:
@@ -236,7 +168,7 @@ const SetupWizard: React.FC = () => {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="text-2xl md:text-3xl text-center">
-            Setup Wizard: Step {setupStep} of 4
+            Setup Wizard: Step {setupStep} of {TOTAL_STEPS}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -244,20 +176,16 @@ const SetupWizard: React.FC = () => {
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <div className="text-base text-muted-foreground">
-            {setupStep}/4 steps complete
+            {setupStep}/{TOTAL_STEPS} steps complete
           </div>
-          {setupStep !== 2 && (
+          {setupStep === 1 && (
             <Button
               size="lg"
               className="text-lg"
               onClick={handleNext}
               disabled={isCalibrating || isSaving || calibrationValue === 0}
             >
-              {isSaving ? 'Saving...' : setupStep < 4 ? (
-                <>Next <ArrowRight className="ml-2 h-5 w-5" /></>
-              ) : (
-                'Complete Setup'
-              )}
+              {isSaving ? 'Saving...' : <>Next <ArrowRight className="ml-2 h-5 w-5" /></>}
             </Button>
           )}
         </CardFooter>
@@ -274,19 +202,14 @@ interface CalibrationProps {
   startCalibration: () => void;
 }
 
-const HeartRateCalibration: React.FC<CalibrationProps> = ({ 
-  isCalibrating, 
-  progress, 
-  secondsLeft, 
-  calibrationValue,
-  startCalibration 
+const HeartRateCalibration: React.FC<CalibrationProps> = ({
+  isCalibrating, progress, secondsLeft, calibrationValue, startCalibration,
 }) => {
   return (
     <div className="space-y-8 py-6">
       <div className="flex justify-center">
         <Heart size={80} className={`${isCalibrating ? 'text-red-500 pulse-animation' : 'text-muted-foreground'}`} />
       </div>
-      
       <div className="text-center space-y-4">
         <h3 className="text-2xl md:text-3xl font-semibold">Heart Rate Calibration</h3>
         <p className="text-xl text-muted-foreground leading-relaxed">
@@ -294,11 +217,10 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
           Please sit comfortably and remain still.
         </p>
       </div>
-      
       {isCalibrating ? (
         <div className="space-y-4">
           <div className="flex justify-center items-center text-xl">
-            <TimerIcon className="mr-2 h-6 w-6" /> 
+            <TimerIcon className="mr-2 h-6 w-6" />
             <span>{secondsLeft} seconds remaining</span>
           </div>
           <Progress value={progress} max={100} className="h-2" />
@@ -319,97 +241,70 @@ const HeartRateCalibration: React.FC<CalibrationProps> = ({
   );
 };
 
-interface VoiceCalibrationProps extends CalibrationProps {
-  type: 'speed' | 'tone' | 'accent';
-  prompt: string;
+interface VoiceSequenceCalibrationProps {
+  onFinalize: (
+    rate: number,
+    toneAverage: number,
+    accentProfile: Record<string, number>,
+  ) => void | Promise<void>;
+  isSaving: boolean;
 }
 
-const VoiceCalibration: React.FC<VoiceCalibrationProps> = ({ 
-  type, 
-  isCalibrating, 
-  progress, 
-  secondsLeft, 
-  calibrationValue,
-  startCalibration,
-  prompt
-}) => {
-  const title = type === 'speed' 
-    ? 'Voice Speed Calibration' 
-    : type === 'tone' 
-      ? 'Voice Tone Calibration' 
-      : 'Voice Accent Calibration';
-  
-  const description = type === 'speed'
-    ? 'Please read the text below at your normal talking speed.'
-    : type === 'tone'
-      ? 'Please read the text with different emotional tones.'
-      : 'Please read the text clearly, emphasizing pronunciation.';
-  
-  return (
-    <div className="space-y-8 py-6">
-      <div className="flex justify-center">
-        <Mic size={80} className={`${isCalibrating ? 'text-blue-500 pulse-animation' : 'text-muted-foreground'}`} />
-      </div>
-      
-      <div className="text-center space-y-4">
-        <h3 className="text-2xl md:text-3xl font-semibold">{title}</h3>
-        <p className="text-xl text-muted-foreground leading-relaxed">{description}</p>
-      </div>
-      
-      {isCalibrating ? (
-        <div className="space-y-6">
-          <div className="p-6 bg-accent rounded-lg text-xl md:text-2xl leading-relaxed text-center">
-            {prompt}
-          </div>
-          <div className="flex justify-center items-center text-xl">
-            <TimerIcon className="mr-2 h-6 w-6" /> 
-            <span>{secondsLeft} seconds remaining</span>
-          </div>
-          <Progress value={progress} max={100} className="h-2" />
-        </div>
-      ) : calibrationValue > 0 ? (
-        <div className="text-center space-y-2">
-          <div className="text-4xl font-bold">{calibrationValue}</div>
-          <p className="text-lg">Baseline {type} recorded</p>
-        </div>
-      ) : (
-        <div className="flex justify-center">
-          <Button size="lg" className="text-lg" onClick={startCalibration}>
-            Start Voice {type.charAt(0).toUpperCase() + type.slice(1)} Calibration
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-interface VoiceSequenceCalibrationProps {
-  onFinalize: (rate: number, tone: number) => void | Promise<void>;
-  isSaving: boolean;
+interface PhraseSample {
+  pitchHz: number;
+  wpm: number;
+  targetRange: string;
 }
 
 const MIN_PHRASE_SECONDS = 8;
 const MAX_PHRASE_SECONDS = 15;
 
+const sampleForPhrase = (phrase: CalibrationPhrase, elapsedSeconds: number): PhraseSample => {
+  // Simulated per-phrase measurements derived from the recording window.
+  const wordCount = phrase.phrase.split(/\s+/).length;
+  const wpm = Math.round((wordCount / Math.max(elapsedSeconds, 1)) * 60 + (Math.random() * 20 - 10));
+  const pitchHz = Math.round(95 + Math.random() * 130); // 95–225 Hz spread
+  return { pitchHz, wpm, targetRange: phrase.targetRange };
+};
+
 const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onFinalize, isSaving }) => {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [samples, setSamples] = useState<PhraseSample[]>([]);
 
   const total = calibrationSequence.length;
   const current = calibrationSequence[index];
   const isLast = index === total - 1;
 
   const handleNextPhrase = React.useCallback(async () => {
+    const sample = sampleForPhrase(current, elapsed);
+    const allSamples = [...samples, sample];
+
     if (isLast) {
-      const avgRate = Math.round(90 + Math.random() * 60);
-      const dominantTone = Math.round(40 + Math.random() * 60);
-      await onFinalize(avgRate, dominantTone);
+      const avgRate = Math.round(allSamples.reduce((s, x) => s + x.wpm, 0) / allSamples.length);
+      const avgPitch = Math.round(allSamples.reduce((s, x) => s + x.pitchHz, 0) / allSamples.length);
+
+      // Accent profile: average pitch grouped by phonetic target range.
+      const grouped: Record<string, number[]> = {};
+      for (const s of allSamples) {
+        if (!grouped[s.targetRange]) grouped[s.targetRange] = [];
+        grouped[s.targetRange].push(s.pitchHz);
+      }
+      const accentProfile: Record<string, number> = {};
+      for (const [k, vals] of Object.entries(grouped)) {
+        accentProfile[k] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      }
+
+      console.log('[VoiceCalibration] Finalizing baseline', { avgRate, avgPitch, accentProfile });
+      await onFinalize(avgRate, avgPitch, accentProfile);
       return;
     }
+
+    setSamples(allSamples);
     setIndex((i) => i + 1);
     setElapsed(0);
-  }, [isLast, onFinalize]);
+  }, [isLast, onFinalize, current, elapsed, samples]);
 
   useEffect(() => {
     if (!started) return;
@@ -430,9 +325,12 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
         <h3 className="text-2xl md:text-3xl font-semibold">Voice Baseline Calibration</h3>
         <p className="text-xl text-muted-foreground leading-relaxed">
           You'll read {total} short phrases aloud. MūD will listen and measure
-          your speech rate and tone. Take your time — at least 8 seconds per phrase.
+          your speech rate, average vocal pitch, and natural accent pattern.
+          Take your time — at least 8 seconds per phrase.
         </p>
-        <Button size="lg" className="text-lg" onClick={() => setStarted(true)}>Start Voice Calibration</Button>
+        <Button size="lg" className="text-lg" onClick={() => setStarted(true)}>
+          Start Voice Calibration
+        </Button>
       </div>
     );
   }
