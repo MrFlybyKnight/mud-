@@ -883,6 +883,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     toggleBackgroundMode,
 
     isSetupComplete,
+    isSetupHydrating,
     setupStep,
     baselineHeartRate,
     baselineVoiceSpeed,
