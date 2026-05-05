@@ -12,6 +12,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { FitnessProvider } from './contexts/FitnessContext';
 import { EncryptionProvider } from './contexts/EncryptionContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { TrustedCircleProvider } from './contexts/TrustedCircleContext';
 import WatchNotification from './components/WatchNotification';
 import EmergencyOverlay from './components/EmergencyOverlay';
 import { DebugPanel } from './components/DebugPanel';
@@ -26,6 +27,7 @@ const App = () => {
           <PlatformProvider>
             <ProfileProvider>
               <MonitoringProvider>
+                <TrustedCircleProvider>
                 <NotificationProvider>
                   <FitnessProvider>
                     <Routes>
@@ -38,6 +40,7 @@ const App = () => {
                     <Toaster />
                   </FitnessProvider>
                 </NotificationProvider>
+                </TrustedCircleProvider>
               </MonitoringProvider>
             </ProfileProvider>
           </PlatformProvider>
