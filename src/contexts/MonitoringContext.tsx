@@ -457,6 +457,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             timestamp: serverTimestamp(),
           });
           console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
+          setLastWriteStatus('success');
+          setLastWriteAt(new Date());
         } catch (e) {
           console.error('[performSync] Firestore write FAILED, queuing locally', { uid, path, error: e });
           enqueueMetric({
@@ -465,6 +467,8 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             emotion: currentEmotion,
             queuedAt: Date.now(),
           });
+          setLastWriteStatus('failed');
+          setLastWriteAt(new Date());
         }
       } else {
         log('Firestore write: skipped, queuing locally', {
