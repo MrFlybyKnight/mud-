@@ -30,7 +30,25 @@ const Dashboard: React.FC = () => {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [trustedOpen, setTrustedOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const settingsTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const onStart = () => {
+      setProfileSaving(true);
+      // Ensure the indicator is visible for at least ~2.5s for a smooth feel.
+      window.setTimeout(() => setProfileSaving(false), 2500);
+    };
+    const onEnd = () => {
+      // No-op — timer above controls dismissal. Kept for symmetry/future use.
+    };
+    window.addEventListener('profile-save-start', onStart);
+    window.addEventListener('profile-save-end', onEnd);
+    return () => {
+      window.removeEventListener('profile-save-start', onStart);
+      window.removeEventListener('profile-save-end', onEnd);
+    };
+  }, []);
 
   if (isSetupHydrating) {
     return (
