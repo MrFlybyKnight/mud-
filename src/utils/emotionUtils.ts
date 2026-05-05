@@ -5,57 +5,95 @@ import { StatusType } from "./monitoringUtils";
 export type EmotionType = 'calm' | 'excited' | 'anxious' | 'focused' | 'stressed' | 'bored' | 'neutral';
 
 /**
- * Determines emotion based on heart rate and speech patterns
- * @param heartRate Current heart rate
- * @param speechPercentage Current speech participation percentage
- * @param heartRateBaseline User's baseline heart rate
- * @param speechPatternTone Speech tone indicator (0-100, higher = more energetic)
- * @param speechVolume Speech volume indicator (0-100)
- * @returns Detected emotion
+ * Determines emotion from heart rate, speech and voice metrics.
+ *
+ * SIGMA-BASED LOGIC
+ * -----------------
+ * Instead of fixed BPM thresholds, deviations are measured in standard
+ * deviations (sigma) relative to the user's resting baseline. Until we have
+ * enough longitudinal data per user to compute sigma empirically, we
+ * approximate it as 12% of baseline (a typical inter-individual HRV proxy):
+ *
+ *   sigma         = heartRateBaseline * 0.12
+ *   oneSigmaHigh  = heartRateBaseline + sigma   (mildly elevated)
+ *   oneSigmaLow   = heartRateBaseline - sigma   (mildly depressed)
+ *   twoSigmaHigh  = heartRateBaseline + 2*sigma (clearly elevated)
+ *
+ * STATE DIFFERENTIATION
+ * ---------------------
+ *  - excited : HR > 2σ  AND  speech > 60%  AND  tone > 65 (high arousal + engaged)
+ *  - stressed: HR > 2σ  AND  tone elevated AND  sustained ≥ 3 consecutive readings
+ *              (speech can be low or high — clenched silence or pressured talking)
+ *  - anxious : HR > 1σ  AND  (speech < 20% OR speech > 80%)
+ *              AND sustained ≥ 3 consecutive readings
+ *  - focused : HR within ±1σ AND moderate speech (40–70%) AND moderate tone
+ *  - bored   : HR < -1σ AND speech < 25%
+ *  - calm    : HR < baseline AND speech 20–60%
+ *  - neutral : fallback
+ *
+ * Stressed and anxious require sustained signal (≥3 consecutive readings) to
+ * avoid flagging momentary spikes; excited and calm fire on a single reading.
+ *
+ * @param heartRate            Current heart rate (BPM)
+ * @param speechPercentage     Current speech participation (0–100)
+ * @param heartRateBaseline    User's resting baseline heart rate
+ * @param speechPatternTone    Tone / pitch energy indicator (0–100)
+ * @param speechVolume         Volume indicator (0–100, reserved for future use)
+ * @param consecutiveReadings  How many consecutive readings have matched the
+ *                             current trend; gates sustained-state emotions.
  */
 export const determineEmotion = (
   heartRate: number,
   speechPercentage: number,
   heartRateBaseline: number = 75,
   speechPatternTone: number = 50,
-  speechVolume: number = 50
+  speechVolume: number = 50,
+  consecutiveReadings: number = 1
 ): EmotionType => {
-  // Calculate deviations from baseline
-  const heartRateDeviation = heartRate - heartRateBaseline;
-  const speechEngagement = speechPercentage;
-  
-  // High heart rate + high speech engagement + high energy = excited
-  if (heartRateDeviation > 15 && speechEngagement > 60 && speechVolume > 70) {
+  const sigma = heartRateBaseline * 0.12;
+  const oneSigmaHigh = heartRateBaseline + sigma;
+  const oneSigmaLow  = heartRateBaseline - sigma;
+  const twoSigmaHigh = heartRateBaseline + sigma * 2;
+
+  const sustained = consecutiveReadings >= 3;
+
+  // Excited — high arousal + engaged speech + lively tone (single reading OK)
+  if (heartRate > twoSigmaHigh && speechPercentage > 60 && speechPatternTone > 65) {
     return 'excited';
   }
-  
-  // High heart rate + low speech engagement = anxious
-  if (heartRateDeviation > 10 && speechEngagement < 30) {
+
+  // Stressed — sustained high HR with elevated tone, regardless of speech amount
+  if (heartRate > twoSigmaHigh && speechPatternTone > 60 && sustained) {
+    return 'stressed';
+  }
+
+  // Anxious — elevated HR with either silent withdrawal or nervous over-talking
+  if (heartRate > oneSigmaHigh &&
+      (speechPercentage < 20 || speechPercentage > 80) &&
+      sustained) {
     return 'anxious';
   }
-  
-  // Moderate heart rate + moderate speech + moderate tone = focused
-  if (Math.abs(heartRateDeviation) < 10 && speechEngagement > 40 && speechEngagement < 70 && 
+
+  // Focused — HR within ±1σ, moderate speech and tone
+  if (heartRate >= oneSigmaLow && heartRate <= oneSigmaHigh &&
+      speechPercentage > 40 && speechPercentage < 70 &&
       speechPatternTone > 40 && speechPatternTone < 70) {
     return 'focused';
   }
-  
-  // High heart rate + high speech volume + moderate to high speech = stressed
-  if (heartRateDeviation > 10 && speechVolume > 75 && speechEngagement > 50) {
-    return 'stressed';
-  }
-  
-  // Low heart rate + low speech engagement = bored
-  if (heartRateDeviation < -10 && speechEngagement < 25) {
+
+  // Bored — depressed HR and minimal speech
+  if (heartRate < oneSigmaLow && speechPercentage < 25) {
     return 'bored';
   }
-  
-  // Low heart rate + moderate speech = calm
-  if (heartRateDeviation < 0 && speechEngagement > 20 && speechEngagement < 60) {
+
+  // Calm — slightly below baseline with relaxed speech
+  if (heartRate < heartRateBaseline && speechPercentage > 20 && speechPercentage < 60) {
     return 'calm';
   }
-  
-  // Default emotion state
+
+  // Reserved for future weighting
+  void speechVolume;
+
   return 'neutral';
 };
 
