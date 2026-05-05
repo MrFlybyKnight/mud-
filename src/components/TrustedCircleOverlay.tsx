@@ -156,7 +156,7 @@ const TrustedCircleOverlay: React.FC = () => {
   const openManualForm = (position: TrustedPosition, prefill?: { name?: string; phone?: string }) => {
     setOpenPosition(position);
     setName(prefill?.name ?? '');
-    setPhone(prefill?.phone ?? '');
+    setPhone(formatUSPhone(prefill?.phone ?? ''));
   };
 
   const handleTap = async (position: TrustedPosition) => {
