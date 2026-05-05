@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Heart, Mic, TimerIcon, ArrowRight } from 'lucide-react';
+import { calibrationSequence } from '@/data/calibrationSequence';
 
 const SetupWizard: React.FC = () => {
   const { 
