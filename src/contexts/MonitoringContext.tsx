@@ -485,6 +485,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
         setLastWriteStatus('queued');
         setLastWriteAt(new Date());
+      }
       log('done', { success, firestoreAttempted });
 
       if (success) {
