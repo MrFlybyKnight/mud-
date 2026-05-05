@@ -7,7 +7,6 @@ import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
 import SettingsDialog from './SettingsDialog';
 import AssessmentsDisplay from './AssessmentsDisplay';
-import AssessmentsDisplay from './AssessmentsDisplay';
 import EmergencyAlert from './EmergencyAlert';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
