@@ -80,6 +80,8 @@ interface MonitoringContextType {
   // Emergency state
   currentEmergency: EmergencyType;
   resolveEmergency: () => void;
+  pendingEmergency: EmergencyEvent | null;
+  clearEmergency: () => void;
   
   // Data synchronization
   lastSyncTime: Date | null;
