@@ -191,8 +191,10 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!uid) {
       setIsSetupComplete(false);
       setSetupStep(0);
+      setIsSetupHydrating(false);
       return;
     }
+    setIsSetupHydrating(true);
     let cancelled = false;
     (async () => {
       try {
@@ -211,10 +213,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setIsSetupComplete(true);
           setSetupStep(0);
         } else {
+          console.log('[Setup] User not yet calibrated — wizard will show', { hasHR, hasVoice });
           setIsSetupComplete(false);
         }
       } catch (e) {
         console.warn('[Setup] Failed to hydrate setup state from Firestore:', e);
+      } finally {
+        if (!cancelled) setIsSetupHydrating(false);
       }
     })();
     return () => { cancelled = true; };
