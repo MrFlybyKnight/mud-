@@ -4,14 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Firebase web config values are publishable and safe to expose in client code.
-// Replace these with the values from your Firebase console (Project settings → General → Your apps).
 const firebaseConfig: FirebaseOptions = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? "your-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? "your-auth-domain",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "your-project-id",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ?? "your-storage-bucket",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "your-sender-id",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? "your-app-id",
+  apiKey: "AIzaSyDuCJqGwCsgIdivPbBQniVgeSlecxO4KKw",
+  authDomain: "mudring-da8f5.firebaseapp.com",
+  projectId: "mudring-da8f5",
+  storageBucket: "mudring-da8f5.firebasestorage.app",
+  messagingSenderId: "320164124777",
+  appId: "1:320164124777:web:1523383de4e5287aceaaf8",
 };
 
 export const app = initializeApp(firebaseConfig);
