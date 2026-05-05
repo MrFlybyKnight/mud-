@@ -512,17 +512,18 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(emotionInterval);
   }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
 
-  // Sample current readings into the rolling buffer every 5s
+  // Sample current readings into the rolling buffer every 60s
   useEffect(() => {
     if (!isMonitoring || !isSetupComplete) return;
+    const SAMPLE_INTERVAL_MS = 60 * 1000;
     const sampler = setInterval(() => {
       const buf = rollingBufferRef.current;
       buf.heartRates.push(heartRate);
       buf.speechRates.push(speechPercentage);
-      // speechTime: 5s of speech if speaking, else 0 (proportional to current %)
-      buf.speechTimes.push((speechPercentage / 100) * 5);
+      // speechTime: seconds of speech in this 60s window (proportional to current %)
+      buf.speechTimes.push((speechPercentage / 100) * 60);
       buf.emotions.push(currentEmotion);
-    }, 5000);
+    }, SAMPLE_INTERVAL_MS);
     return () => clearInterval(sampler);
   }, [isMonitoring, isSetupComplete, heartRate, speechPercentage, currentEmotion]);
 
@@ -658,21 +659,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setCurrentEmergency('speech');
     }
     
-    // Randomly trigger an emergency situation every once in a while for demo purposes
-    const randomEmergencyInterval = setInterval(() => {
-      const shouldTrigger = Math.random() < 0.05; // 5% chance every check
-      if (shouldTrigger && currentEmergency === 'none') {
-        const emergencyType: EmergencyType = Math.random() > 0.5 ? 'heart' : 'speech';
-        setCurrentEmergency(emergencyType);
-        
-        // Auto-resolve after 30 seconds
-        setTimeout(() => {
-          setCurrentEmergency('none');
-        }, 30000);
-      }
-    }, 60000); // Check every minute
-    
-    return () => clearInterval(randomEmergencyInterval);
+    // Random demo emergency trigger removed — only real event-driven triggers
+    // (heart-rate deviation > 1σ and voice activity detection) should fire.
+    return () => {};
   }, [isSetupComplete, isMonitoring, heartRateStatus, speechStatus, heartRate, speechPercentage, heartRateHighThreshold, speechHighThreshold, currentEmergency]);
   
   // Update the hourly assessment effect to include emotion data
