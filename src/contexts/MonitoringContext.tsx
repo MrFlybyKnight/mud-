@@ -48,6 +48,7 @@ interface MonitoringContextType {
 
   // Setup and calibration
   isSetupComplete: boolean;
+  isSetupHydrating: boolean;
   setupStep: number;
   baselineHeartRate: number;
   baselineVoiceSpeed: number;
