@@ -19,6 +19,7 @@ const SetupWizard: React.FC = () => {
     setupStep,
     nextSetupStep,
     completeSetup,
+    baselineHeartRate,
     setBaselineHeartRate,
     setBaselineVoiceSpeed,
     setBaselineVoiceTone,
