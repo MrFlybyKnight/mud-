@@ -42,6 +42,16 @@ export const callPhone = (phone: string) => {
   window.location.href = `tel:${cleaned}`;
 };
 
+const digitsOnly = (s: string) => s.replace(/\D/g, '').slice(0, 10);
+const formatUSPhone = (s: string) => {
+  const d = digitsOnly(s);
+  if (d.length === 0) return '';
+  if (d.length < 4) return `(${d}`;
+  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+};
+const isValidUSPhone = (s: string) => digitsOnly(s).length === 10;
+
 const initials = (name: string) =>
   name
     .trim()
@@ -146,7 +156,7 @@ const TrustedCircleOverlay: React.FC = () => {
   const openManualForm = (position: TrustedPosition, prefill?: { name?: string; phone?: string }) => {
     setOpenPosition(position);
     setName(prefill?.name ?? '');
-    setPhone(prefill?.phone ?? '');
+    setPhone(formatUSPhone(prefill?.phone ?? ''));
   };
 
   const handleTap = async (position: TrustedPosition) => {
@@ -262,11 +272,24 @@ const TrustedCircleOverlay: React.FC = () => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tc-phone">Phone</Label>
-                <Input id="tc-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={32} placeholder="+1 555 123 4567" />
+                <Input
+                  id="tc-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(formatUSPhone(e.target.value))}
+                  maxLength={14}
+                  placeholder="(555) 123-4567"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This number will be called directly in an emergency.
+                </p>
               </div>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-                <Button onClick={handleSave}>Save</Button>
+                <Button onClick={handleSave} disabled={!name.trim() || !isValidUSPhone(phone)}>
+                  Save
+                </Button>
               </DialogFooter>
             </div>
           )}
