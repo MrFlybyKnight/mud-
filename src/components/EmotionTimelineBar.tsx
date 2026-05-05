@@ -76,7 +76,7 @@ const EmotionTimelineBar: React.FC<EmotionTimelineBarProps> = ({ onOpen, classNa
   ];
 
   const Bar = (
-    <div className="flex h-2 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900/60">
+    <div className="flex h-4 w-full overflow-hidden rounded-full border border-slate-800 bg-slate-900/60">
       {slots.map((s, i) => (
         <div
           key={s ? s.id : `empty-${i}`}
