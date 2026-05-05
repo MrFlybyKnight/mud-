@@ -5,7 +5,7 @@ import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 // Define the assessment data structure
@@ -161,6 +161,15 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lastWriteAt, setLastWriteAt] = useState<Date | null>(null);
   const [queuedMetricsCount, setQueuedMetricsCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rolling aggregation buffers
+  const rollingBufferRef = useRef<{
+    heartRates: number[];
+    speechRates: number[];
+    speechTimes: number[];
+    emotions: EmotionType[];
+    windowStart: number;
+  }>({ heartRates: [], speechRates: [], speechTimes: [], emotions: [], windowStart: Date.now() });
   
   const { toast } = useToast();
   const { uid } = useAuth();
@@ -459,7 +468,138 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     return () => clearInterval(emotionInterval);
   }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground]);
-  
+
+  // Sample current readings into the rolling buffer every 5s
+  useEffect(() => {
+    if (!isMonitoring || !isSetupComplete) return;
+    const sampler = setInterval(() => {
+      const buf = rollingBufferRef.current;
+      buf.heartRates.push(heartRate);
+      buf.speechRates.push(speechPercentage);
+      // speechTime: 5s of speech if speaking, else 0 (proportional to current %)
+      buf.speechTimes.push((speechPercentage / 100) * 5);
+      buf.emotions.push(currentEmotion);
+    }, 5000);
+    return () => clearInterval(sampler);
+  }, [isMonitoring, isSetupComplete, heartRate, speechPercentage, currentEmotion]);
+
+  // Rolling aggregation pipeline: subchecks (20m), checkpoints (60m), dailySummaries (24h)
+  useEffect(() => {
+    if (!uid || !isSetupComplete) return;
+
+    const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+    const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    const writeSubcheck = async () => {
+      const buf = rollingBufferRef.current;
+      if (buf.heartRates.length === 0) {
+        console.log('[Pipeline] subcheck skipped — no samples');
+        return;
+      }
+      try {
+        await addDoc(collection(db, 'users', uid, 'subchecks'), {
+          heartRate: avg(buf.heartRates),
+          speechRate: avg(buf.speechRates),
+          speechTime: sum(buf.speechTimes),
+          dominantEmotion: dominant(buf.emotions),
+          timestamp: serverTimestamp(),
+          windowStart: new Date(buf.windowStart),
+          windowEnd: new Date(),
+        });
+        console.log('[Pipeline] subcheck written');
+      } catch (e) {
+        console.error('[Pipeline] subcheck failed', e);
+      }
+      rollingBufferRef.current = {
+        heartRates: [], speechRates: [], speechTimes: [], emotions: [], windowStart: Date.now(),
+      };
+    };
+
+    const dominant = (emotions: EmotionType[]): EmotionType => {
+      if (!emotions.length) return 'neutral';
+      const counts: Record<string, number> = {};
+      let best: EmotionType = emotions[0];
+      let bestCount = 0;
+      for (const e of emotions) {
+        counts[e] = (counts[e] || 0) + 1;
+        if (counts[e] > bestCount) { bestCount = counts[e]; best = e; }
+      }
+      return best;
+    };
+
+    const writeCheckpoint = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'subchecks'),
+          orderBy('timestamp', 'desc'),
+          limit(3),
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          console.log('[Pipeline] checkpoint skipped — no subchecks');
+          return;
+        }
+        const docs = snap.docs.map(d => d.data() as { heartRate: number; speechRate: number; speechTime: number; dominantEmotion: EmotionType });
+        const now = new Date();
+        const id = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}`;
+        await setDoc(doc(db, 'users', uid, 'checkpoints', id), {
+          heartRate: avg(docs.map(d => d.heartRate)),
+          speechRate: avg(docs.map(d => d.speechRate)),
+          speechTime: sum(docs.map(d => d.speechTime)),
+          dominantEmotion: dominant(docs.map(d => d.dominantEmotion)),
+          subcheckCount: docs.length,
+          timestamp: serverTimestamp(),
+        });
+        console.log('[Pipeline] checkpoint written', id);
+        // Cloud Function "cleanupSubchecks" handles deletion of subchecks > 40m old.
+      } catch (e) {
+        console.error('[Pipeline] checkpoint failed', e);
+      }
+    };
+
+    const writeDailySummary = async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'checkpoints'),
+          orderBy('timestamp', 'desc'),
+          limit(24),
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          console.log('[Pipeline] dailySummary skipped — no checkpoints');
+          return;
+        }
+        const docs = snap.docs.map(d => d.data() as { heartRate: number; speechRate: number; speechTime: number; dominantEmotion: EmotionType });
+        const now = new Date();
+        const id = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        await setDoc(doc(db, 'users', uid, 'dailySummaries', id), {
+          heartRate: avg(docs.map(d => d.heartRate)),
+          speechRate: avg(docs.map(d => d.speechRate)),
+          speechTime: sum(docs.map(d => d.speechTime)),
+          dominantEmotion: dominant(docs.map(d => d.dominantEmotion)),
+          checkpointCount: docs.length,
+          timestamp: serverTimestamp(),
+        });
+        console.log('[Pipeline] dailySummary written', id);
+        // Cloud Function "cleanupCheckpoints" handles deletion of checkpoints > 25h old.
+      } catch (e) {
+        console.error('[Pipeline] dailySummary failed', e);
+      }
+    };
+
+    const subcheckTimer = setInterval(writeSubcheck, 20 * 60 * 1000);
+    const checkpointTimer = setInterval(writeCheckpoint, 60 * 60 * 1000);
+    const dailyTimer = setInterval(writeDailySummary, 24 * 60 * 60 * 1000);
+
+    return () => {
+      clearInterval(subcheckTimer);
+      clearInterval(checkpointTimer);
+      clearInterval(dailyTimer);
+    };
+  }, [uid, isSetupComplete]);
+
+
   // Effect to detect emergency situations
   useEffect(() => {
     if (!isSetupComplete || !isMonitoring) return;
