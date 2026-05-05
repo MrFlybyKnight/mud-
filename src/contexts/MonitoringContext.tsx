@@ -335,26 +335,25 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       let firestoreAttempted = false;
       if (success && uid) {
         firestoreAttempted = true;
-        log('Firestore write: attempting', { uid, path: `users/${uid}/watchMetrics` });
+        const path = `users/${uid}/watchMetrics`;
+        log('Firestore write: attempting', { uid, path });
         try {
-          await addWatchMetric(uid, {
-            device: 'web-simulator',
-            recordedAt: Timestamp.fromDate(syncData.timestamp),
+          const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
             heartRate,
-            metadata: {
-              speechPercentage,
-              emotion: currentEmotion,
-            },
-          } as any);
-          log('Firestore write: SUCCESS');
+            speechPercentage,
+            emotion: currentEmotion,
+            timestamp: serverTimestamp(),
+          });
+          console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
         } catch (e) {
-          console.error('[performSync] Firestore write: FAILED', e);
+          console.error('[performSync] Firestore write FAILED', { uid, path, error: e });
         }
       } else {
         log('Firestore write: skipped', {
           reason: !success ? 'server sync failed' : 'no authenticated uid',
           success,
           uidPresent: Boolean(uid),
+          uid: uid ?? null,
         });
       }
       log('done', { success, firestoreAttempted });
