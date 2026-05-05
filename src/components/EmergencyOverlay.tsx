@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
+import { callPhone } from './TrustedCircleOverlay';
 import { Button } from '@/components/ui/button';
 import { recordEmergencyEvent, type EmergencyEvent, type EmergencyType } from '@/utils/notificationUtils';
 import { Phone, Heart, X } from 'lucide-react';
@@ -45,17 +47,20 @@ const BreathingGuide: React.FC = () => {
 
 const EmergencyOverlay: React.FC = () => {
   const { pendingEmergency, clearEmergency } = useMonitoring();
+  const { contactByPosition } = useTrustedCircle();
   const event = pendingEmergency;
   const isTwoTier = !!event && TWO_TIER.includes(event.type);
   const initialCountdown = event?.countdownSeconds ?? 0;
   const [countdown, setCountdown] = useState<number>(initialCountdown);
   const [escalated, setEscalated] = useState<boolean>(false);
   const recordedRef = useRef<boolean>(false);
+  const autoDialedRef = useRef<boolean>(false);
 
   // Reset state when a new event arrives
   useEffect(() => {
     if (!event) return;
     recordedRef.current = false;
+    autoDialedRef.current = false;
     setEscalated(false);
     setCountdown(event.countdownSeconds ?? 0);
   }, [event?.notification.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,6 +74,12 @@ const EmergencyOverlay: React.FC = () => {
       if (!recordedRef.current) {
         recordedRef.current = true;
         void recordEmergencyEvent(event, 'contacts_alerted');
+      }
+      // Auto-dial primary contact (top left) as last resort
+      const primary = contactByPosition.topLeft;
+      if (primary && !autoDialedRef.current) {
+        autoDialedRef.current = true;
+        callPhone(primary.phone);
       }
       return;
     }
