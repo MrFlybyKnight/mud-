@@ -469,6 +469,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
       <div className="flex justify-center pt-4">
         <Button
           size="lg"
+          className="text-lg"
           variant={canAdvance ? 'default' : 'outline'}
           disabled={!canAdvance || isSaving}
           onClick={handleNextPhrase}
@@ -477,7 +478,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
             ? 'Saving...'
             : isLast
               ? 'Complete Calibration'
-              : <>Next Phrase <ArrowRight className="ml-2 h-4 w-4" /></>}
+              : <>Next Phrase <ArrowRight className="ml-2 h-5 w-5" /></>}
         </Button>
       </div>
     </div>
