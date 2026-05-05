@@ -5,8 +5,8 @@ import { determineEmotion, EmotionType } from '../utils/emotionUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
-import { addWatchMetric } from '../firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 // Define the assessment data structure
 interface AssessmentData {
