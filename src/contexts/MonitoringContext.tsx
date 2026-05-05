@@ -420,6 +420,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (success && uid) {
         firestoreAttempted = true;
         const path = `users/${uid}/watchMetrics`;
+
+        // Try to flush any previously queued metrics first
+        try {
+          await flushQueue(uid);
+        } catch (e) {
+          console.error('[performSync] flushQueue threw', e);
+        }
+
         log('Firestore write: attempting', { uid, path });
         try {
           const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
@@ -430,14 +438,26 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           });
           console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
         } catch (e) {
-          console.error('[performSync] Firestore write FAILED', { uid, path, error: e });
+          console.error('[performSync] Firestore write FAILED, queuing locally', { uid, path, error: e });
+          enqueueMetric({
+            heartRate,
+            speechPercentage,
+            emotion: currentEmotion,
+            queuedAt: Date.now(),
+          });
         }
       } else {
-        log('Firestore write: skipped', {
+        log('Firestore write: skipped, queuing locally', {
           reason: !success ? 'server sync failed' : 'no authenticated uid',
           success,
           uidPresent: Boolean(uid),
           uid: uid ?? null,
+        });
+        enqueueMetric({
+          heartRate,
+          speechPercentage,
+          emotion: currentEmotion,
+          queuedAt: Date.now(),
         });
       }
       log('done', { success, firestoreAttempted });
