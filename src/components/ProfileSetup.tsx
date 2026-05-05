@@ -144,16 +144,18 @@ const ProfileSetup: React.FC = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="baselineHeartRateResting">Resting Heart Rate (BPM)</Label>
-              <Input 
-                id="baselineHeartRateResting" 
-                name="baselineHeartRateResting" 
-                type="number" 
-                value={formData.baselineHeartRateResting} 
-                onChange={handleInputChange} 
-                placeholder="E.g., 70"
+              <Input
+                id="baselineHeartRateResting"
+                name="baselineHeartRateResting"
+                type="number"
+                value={formData.baselineHeartRateResting}
+                readOnly
+                disabled
+                placeholder="Run calibration to populate"
               />
               <p className="text-xs text-muted-foreground">
-                Normal resting heart rate is usually between 60-100 BPM
+                Captured during calibration. Use Re-calibrate from the dashboard
+                to update this value.
               </p>
             </div>
           </div>
@@ -163,16 +165,17 @@ const ProfileSetup: React.FC = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="naturalSpeechRate">Natural Speech Rate (words per minute)</Label>
-              <Input 
-                id="naturalSpeechRate" 
-                name="naturalSpeechRate" 
-                type="number" 
-                value={formData.naturalSpeechRate} 
-                onChange={handleInputChange} 
-                placeholder="E.g., 150"
+              <Input
+                id="naturalSpeechRate"
+                name="naturalSpeechRate"
+                type="number"
+                value={formData.naturalSpeechRate}
+                readOnly
+                disabled
+                placeholder="Run calibration to populate"
               />
               <p className="text-xs text-muted-foreground">
-                Average speech rate is usually between 120-150 words per minute
+                Captured during voice calibration. Re-calibrate to update.
               </p>
             </div>
             
