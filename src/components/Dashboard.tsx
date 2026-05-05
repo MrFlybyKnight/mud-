@@ -136,64 +136,70 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Hero: emotion + cow + trusted circle overlay */}
-        <section className="relative flex-1 min-h-0 rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col items-center justify-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current emotion</p>
-          <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
-            {currentEmotion}
-          </h2>
-          <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
-            <MoodCow
-              emotion={currentEmotion}
+        {historyOpen ? (
+          <HistoryScreen onBack={() => setHistoryOpen(false)} />
+        ) : (
+          <>
+            {/* Hero: emotion + cow + trusted circle overlay */}
+            <section className="relative flex-1 min-h-0 rounded-2xl border border-slate-800 bg-slate-900/40 p-3 flex flex-col items-center justify-center">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current emotion</p>
+              <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
+                {currentEmotion}
+              </h2>
+              <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
+                <MoodCow
+                  emotion={currentEmotion}
+                  className={cn(
+                    'h-full w-auto transition-transform duration-300 ease-out',
+                    trustedActive ? 'scale-50' : 'scale-100',
+                  )}
+                />
+                <TrustedCircleOverlay />
+              </div>
+            </section>
+
+            {/* Emotion timeline (last 6h) */}
+            <EmotionTimelineBar onOpen={() => setHistoryOpen(true)} className="shrink-0" />
+
+            {/* Vitals row */}
+            <section className="grid grid-cols-2 gap-3 shrink-0">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Heart className="h-3.5 w-3.5 text-rose-400" /> Heart rate
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-2xl font-semibold text-slate-50 tabular-nums">{heartRate}</span>
+                  <span className="text-xs text-slate-400">BPM</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Activity className="h-3.5 w-3.5 text-sky-400" /> Speech
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-2xl font-semibold text-slate-50 tabular-nums">{speechPercentage}</span>
+                  <span className="text-xs text-slate-400">%</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Status bar */}
+            <button
+              onClick={cycleStatus}
+              aria-label={`Monitoring mode: ${status}. Tap to change.`}
               className={cn(
-                'h-full w-auto transition-transform duration-300 ease-out',
-                trustedActive ? 'scale-50' : 'scale-100',
+                'shrink-0 w-full rounded-xl border px-4 py-2.5 flex items-center justify-between transition-colors',
+                statusColor
               )}
-            />
-            <TrustedCircleOverlay />
-          </div>
-        </section>
-
-        {/* Emotion timeline (last 6h) */}
-        <EmotionTimelineBar onOpen={() => setHistoryOpen(true)} className="shrink-0" />
-
-        {/* Vitals row */}
-        <section className="grid grid-cols-2 gap-3 shrink-0">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Heart className="h-3.5 w-3.5 text-rose-400" /> Heart rate
-            </div>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-semibold text-slate-50 tabular-nums">{heartRate}</span>
-              <span className="text-xs text-slate-400">BPM</span>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Activity className="h-3.5 w-3.5 text-sky-400" /> Speech
-            </div>
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-2xl font-semibold text-slate-50 tabular-nums">{speechPercentage}</span>
-              <span className="text-xs text-slate-400">%</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Status bar */}
-        <button
-          onClick={cycleStatus}
-          aria-label={`Monitoring mode: ${status}. Tap to change.`}
-          className={cn(
-            'shrink-0 w-full rounded-xl border px-4 py-2.5 flex items-center justify-between transition-colors',
-            statusColor
-          )}
-        >
-          <span className="flex items-center gap-2 text-sm font-medium">
-            {status === 'Paused' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {status}
-          </span>
-          <span className="text-[10px] uppercase tracking-wider opacity-70">tap to toggle</span>
-        </button>
+            >
+              <span className="flex items-center gap-2 text-sm font-medium">
+                {status === 'Paused' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {status}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider opacity-70">tap to toggle</span>
+            </button>
+          </>
+        )}
 
         {/* Bottom row */}
         <nav className="shrink-0 grid grid-cols-3 gap-3 pb-1">
