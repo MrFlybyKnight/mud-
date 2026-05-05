@@ -34,11 +34,8 @@ const Dashboard: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
 
-  const closeAll = () => {
-    setHistoryOpen(false);
-    setSettingsOpen(false);
-    if (trustedActive) toggleTrusted();
-  };
+
+
   const toggleHistory = () => {
     if (historyOpen) { setHistoryOpen(false); return; }
     setSettingsOpen(false);
