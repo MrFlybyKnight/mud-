@@ -235,24 +235,26 @@ const SetupWizard: React.FC = () => {
     <div className="container max-w-2xl mx-auto px-4 py-8">
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="text-xl text-center">
+          <CardTitle className="text-2xl md:text-3xl text-center">
             Setup Wizard: Step {setupStep} of 4
           </CardTitle>
         </CardHeader>
         <CardContent>
           {renderStepContent()}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-muted-foreground">
+        <CardFooter className="flex justify-between items-center">
+          <div className="text-base text-muted-foreground">
             {setupStep}/4 steps complete
           </div>
           {setupStep !== 2 && (
             <Button
+              size="lg"
+              className="text-lg"
               onClick={handleNext}
               disabled={isCalibrating || isSaving || calibrationValue === 0}
             >
               {isSaving ? 'Saving...' : setupStep < 4 ? (
-                <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                <>Next <ArrowRight className="ml-2 h-5 w-5" /></>
               ) : (
                 'Complete Setup'
               )}
