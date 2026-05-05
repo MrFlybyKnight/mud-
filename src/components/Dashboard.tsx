@@ -63,7 +63,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex flex-col bg-[hsl(222_47%_8%)] text-slate-100 overflow-hidden">
+    <div className="fixed inset-0 z-20 flex flex-col bg-[hsl(222_47%_8%)] text-slate-100 overflow-hidden animate-fade-in">
       <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 py-3 gap-3">
         {/* Top bar */}
         <header className="flex items-center justify-between shrink-0">
