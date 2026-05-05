@@ -118,6 +118,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Setup and calibration state
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
+  const [isSetupHydrating, setIsSetupHydrating] = useState<boolean>(true);
   const [setupStep, setSetupStep] = useState<number>(0);
   const [baselineHeartRate, setBaselineHeartRate] = useState<number>(0);
   const [baselineVoiceSpeed, setBaselineVoiceSpeed] = useState<number>(0);
