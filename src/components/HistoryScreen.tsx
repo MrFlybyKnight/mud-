@@ -12,8 +12,7 @@ import { db } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
-import { ArrowLeft, ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const EMOTION_HEX: Record<EmotionType, string> = {
@@ -25,6 +24,8 @@ const EMOTION_HEX: Record<EmotionType, string> = {
   excited: '#eab308',
   neutral: '#94a3b8',
 };
+
+const EMOTION_ORDER: EmotionType[] = ['calm', 'focused', 'anxious', 'stressed', 'bored', 'excited', 'neutral'];
 
 interface Checkpoint {
   id: string;
@@ -57,49 +58,7 @@ const periodOf = (d: Date): 'This Morning' | 'This Afternoon' | 'This Evening' |
   return 'This Evening';
 };
 
-interface DonutProps {
-  data: { emotion: EmotionType; value: number }[];
-  size?: number;
-}
-const Donut: React.FC<DonutProps> = ({ data, size = 72 }) => {
-  const total = data.reduce((s, d) => s + d.value, 0) || 1;
-  const radius = size / 2;
-  const inner = radius * 0.62;
-  const cx = radius;
-  const cy = radius;
-  let acc = 0;
-  const arcs = data
-    .filter((d) => d.value > 0)
-    .map((d) => {
-      const start = (acc / total) * Math.PI * 2 - Math.PI / 2;
-      acc += d.value;
-      const end = (acc / total) * Math.PI * 2 - Math.PI / 2;
-      const x0 = cx + radius * Math.cos(start);
-      const y0 = cy + radius * Math.sin(start);
-      const x1 = cx + radius * Math.cos(end);
-      const y1 = cy + radius * Math.sin(end);
-      const xi1 = cx + inner * Math.cos(end);
-      const yi1 = cy + inner * Math.sin(end);
-      const xi0 = cx + inner * Math.cos(start);
-      const yi0 = cy + inner * Math.sin(start);
-      const large = end - start > Math.PI ? 1 : 0;
-      return {
-        emotion: d.emotion,
-        path: `M ${x0} ${y0} A ${radius} ${radius} 0 ${large} 1 ${x1} ${y1} L ${xi1} ${yi1} A ${inner} ${inner} 0 ${large} 0 ${xi0} ${yi0} Z`,
-      };
-    });
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-      {arcs.length === 0 ? (
-        <circle cx={cx} cy={cy} r={radius} fill="hsl(var(--muted))" />
-      ) : (
-        arcs.map((a) => <path key={a.emotion} d={a.path} fill={EMOTION_HEX[a.emotion]} />)
-      )}
-    </svg>
-  );
-};
-
-const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
+const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
   const { uid } = useAuth();
   const { notifications } = useNotification();
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -141,27 +100,18 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
     return () => unsub();
   }, [uid]);
 
-  const summary = useMemo(() => {
-    if (checkpoints.length === 0) {
-      return { dominant: 'neutral' as EmotionType, avgHr: 0, breakdown: [] as { emotion: EmotionType; value: number }[] };
-    }
-    const counts: Record<string, number> = {};
-    let hrSum = 0;
-    let hrCount = 0;
+  // Histogram: minutes per emotion today
+  const histogram = useMemo(() => {
+    const minutes: Partial<Record<EmotionType, number>> = {};
     for (const c of checkpoints) {
-      counts[c.dominantEmotion] = (counts[c.dominantEmotion] || 0) + 1;
-      if (c.heartRate > 0) {
-        hrSum += c.heartRate;
-        hrCount += 1;
-      }
+      const dur = (c.subcheckCount || 1) * 20;
+      minutes[c.dominantEmotion] = (minutes[c.dominantEmotion] || 0) + dur;
     }
-    let dominant: EmotionType = 'neutral';
-    let best = 0;
-    Object.entries(counts).forEach(([e, n]) => {
-      if (n > best) { best = n; dominant = e as EmotionType; }
-    });
-    const breakdown = Object.entries(counts).map(([e, n]) => ({ emotion: e as EmotionType, value: n }));
-    return { dominant, avgHr: hrCount ? Math.round(hrSum / hrCount) : 0, breakdown };
+    const entries = EMOTION_ORDER
+      .filter((e) => (minutes[e] || 0) > 0)
+      .map((e) => ({ emotion: e, minutes: minutes[e] || 0 }));
+    const max = entries.reduce((m, e) => Math.max(m, e.minutes), 0) || 1;
+    return { entries, max };
   }, [checkpoints]);
 
   const grouped = useMemo(() => {
@@ -185,154 +135,164 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-[hsl(222_47%_8%)] text-slate-100 animate-fade-in">
-      <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 py-3 gap-3 overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center justify-between shrink-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-slate-200 -ml-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
-          <h1 className="text-base font-semibold">History</h1>
-          <div className="w-14" />
-        </header>
+    <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
+      <header className="flex items-center justify-between shrink-0">
+        <h1 className="text-base font-semibold">History</h1>
+        <span className="text-[11px] uppercase tracking-widest text-slate-400">Last 24h</span>
+      </header>
 
-        {/* Summary */}
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 shrink-0">
-          <div className="flex items-center gap-4">
-            <Donut data={summary.breakdown} />
-            <div className="flex-1">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">Today</p>
-              <div className="mt-1 flex items-center gap-2">
-                <span
-                  className="inline-block h-3 w-3 rounded-full"
-                  style={{ backgroundColor: EMOTION_HEX[summary.dominant] }}
-                />
-                <span className="text-lg font-semibold capitalize">{summary.dominant}</span>
-              </div>
-              <p className="mt-1 text-xs text-slate-400">
-                Avg{' '}
-                <span className="text-slate-200 tabular-nums">{summary.avgHr || '—'}</span> bpm ·{' '}
-                <span className="text-slate-200 tabular-nums">{checkpoints.length}</span> entries
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Scrollable list */}
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 pb-2">
-          {checkpoints.length === 0 && (
-            <p className="text-center text-sm text-slate-400 mt-8">
-              No checkpoints yet. They appear hourly as your day unfolds.
-            </p>
-          )}
-          {(['This Morning', 'This Afternoon', 'This Evening', 'Earlier Today'] as const).map((label) => {
-            const items = grouped[label];
-            if (!items || items.length === 0) return null;
-            return (
-              <section key={label}>
-                <h2 className="mb-1.5 text-[11px] uppercase tracking-widest text-slate-400">{label}</h2>
-                <ul className="space-y-1.5">
-                  {items.map((c) => {
-                    const isOpen = expanded === c.id;
-                    const color = EMOTION_HEX[c.dominantEmotion];
-                    const periodNotifs = notificationsForCheckpoint(c);
-                    return (
-                      <li
-                        key={c.id}
-                        className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden"
-                        style={{ borderLeft: `3px solid ${color}` }}
+      {/* Scrollable call-log list */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+        {checkpoints.length === 0 && (
+          <p className="text-center text-sm text-slate-400 mt-8">
+            No checkpoints yet. They appear hourly as your day unfolds.
+          </p>
+        )}
+        {(['This Morning', 'This Afternoon', 'This Evening', 'Earlier Today'] as const).map((label) => {
+          const items = grouped[label];
+          if (!items || items.length === 0) return null;
+          return (
+            <section key={label}>
+              <h2 className="mb-1.5 text-[11px] uppercase tracking-widest text-slate-400">{label}</h2>
+              <ul className="space-y-1.5">
+                {items.map((c) => {
+                  const isOpen = expanded === c.id;
+                  const color = EMOTION_HEX[c.dominantEmotion];
+                  const periodNotifs = notificationsForCheckpoint(c);
+                  return (
+                    <li
+                      key={c.id}
+                      className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden"
+                      style={{ borderLeft: `3px solid ${color}` }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpanded(isOpen ? null : c.id)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-800/40 transition-colors"
                       >
-                        <button
-                          type="button"
-                          onClick={() => setExpanded(isOpen ? null : c.id)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-800/40 transition-colors"
-                        >
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: color }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <span className="text-sm font-medium tabular-nums">{formatTime(c.timestamp)}</span>
-                              <span className="text-xs capitalize text-slate-300">{c.dominantEmotion}</span>
-                            </div>
-                            <div className="mt-0.5 flex items-center gap-3 text-[11px] text-slate-400">
-                              <span className="inline-flex items-center gap-1">
-                                <Heart className="h-3 w-3 text-rose-400" />
-                                <span className="tabular-nums">{c.heartRate || '—'}</span> bpm
-                              </span>
-                              <span className="tabular-nums">{c.subcheckCount * 20} min</span>
-                            </div>
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-sm font-medium tabular-nums">{formatTime(c.timestamp)}</span>
+                            <span className="text-xs capitalize text-slate-300">{c.dominantEmotion}</span>
                           </div>
-                          {isOpen ? (
-                            <ChevronUp className="h-4 w-4 text-slate-500" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-slate-500" />
-                          )}
-                        </button>
-
-                        {isOpen && (
-                          <div className="border-t border-slate-800 px-3 py-2.5 text-xs text-slate-300 space-y-1.5 animate-fade-in">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <MessageCircle className="h-3.5 w-3.5 text-sky-400" />
-                                <span className="text-slate-400">Speech rate</span>
-                                <span className="ml-auto tabular-nums text-slate-100">
-                                  {c.speechRate || '—'} wpm
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                                <span className="text-slate-400">Speech time</span>
-                                <span className="ml-auto tabular-nums text-slate-100">
-                                  {c.speechTime || 0}s
-                                </span>
-                              </div>
-                              <div className="col-span-2 flex items-center gap-1.5">
-                                <span className="text-slate-400">σ deviation</span>
-                                <span className="ml-auto tabular-nums text-slate-100">
-                                  {typeof c.sigmaDeviation === 'number' ? c.sigmaDeviation.toFixed(2) : '—'}
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-slate-400 mb-1">Notifications this hour</p>
-                              {periodNotifs.length === 0 ? (
-                                <p className="text-slate-500 italic">None</p>
-                              ) : (
-                                <ul className="space-y-1">
-                                  {periodNotifs.map((n) => (
-                                    <li key={n.id} className="flex items-start gap-1.5">
-                                      <span
-                                        className={cn(
-                                          'mt-1 h-1.5 w-1.5 rounded-full shrink-0',
-                                          n.priority === 'high'
-                                            ? 'bg-red-500'
-                                            : n.priority === 'medium'
-                                            ? 'bg-amber-500'
-                                            : 'bg-emerald-500',
-                                        )}
-                                      />
-                                      <div>
-                                        <p className="text-slate-200">{n.title}</p>
-                                        <p className="text-slate-400">{n.message}</p>
-                                      </div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
+                          <div className="mt-0.5 flex items-center gap-3 text-[11px] text-slate-400">
+                            <span className="inline-flex items-center gap-1">
+                              <Heart className="h-3 w-3 text-rose-400" />
+                              <span className="tabular-nums">{c.heartRate || '—'}</span> bpm
+                            </span>
+                            <span className="tabular-nums">{c.subcheckCount * 20} min</span>
                           </div>
+                        </div>
+                        {isOpen ? (
+                          <ChevronUp className="h-4 w-4 text-slate-500" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-slate-500" />
                         )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            );
-          })}
-        </div>
+                      </button>
+
+                      {isOpen && (
+                        <div className="border-t border-slate-800 px-3 py-2.5 text-xs text-slate-300 space-y-1.5 animate-fade-in">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <MessageCircle className="h-3.5 w-3.5 text-sky-400" />
+                              <span className="text-slate-400">Speech rate</span>
+                              <span className="ml-auto tabular-nums text-slate-100">
+                                {c.speechRate || '—'} wpm
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Activity className="h-3.5 w-3.5 text-emerald-400" />
+                              <span className="text-slate-400">Speech time</span>
+                              <span className="ml-auto tabular-nums text-slate-100">
+                                {c.speechTime || 0}s
+                              </span>
+                            </div>
+                            <div className="col-span-2 flex items-center gap-1.5">
+                              <span className="text-slate-400">σ deviation</span>
+                              <span className="ml-auto tabular-nums text-slate-100">
+                                {typeof c.sigmaDeviation === 'number' ? c.sigmaDeviation.toFixed(2) : '—'}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-slate-400 mb-1">Notifications this hour</p>
+                            {periodNotifs.length === 0 ? (
+                              <p className="text-slate-500 italic">None</p>
+                            ) : (
+                              <ul className="space-y-1">
+                                {periodNotifs.map((n) => (
+                                  <li key={n.id} className="flex items-start gap-1.5">
+                                    <span
+                                      className={cn(
+                                        'mt-1 h-1.5 w-1.5 rounded-full shrink-0',
+                                        n.priority === 'high'
+                                          ? 'bg-red-500'
+                                          : n.priority === 'medium'
+                                          ? 'bg-amber-500'
+                                          : 'bg-emerald-500',
+                                      )}
+                                    />
+                                    <div>
+                                      <p className="text-slate-200">{n.title}</p>
+                                      <p className="text-slate-400">{n.message}</p>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
       </div>
+
+      {/* Pinned histogram */}
+      <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
+        <div className="flex items-end justify-between gap-2 h-20">
+          {histogram.entries.length === 0 ? (
+            <p className="w-full text-center text-xs text-slate-500">No emotion data yet today</p>
+          ) : (
+            histogram.entries.map((e) => {
+              const heightPct = Math.max(8, (e.minutes / histogram.max) * 100);
+              return (
+                <div key={e.emotion} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <span className="text-[10px] tabular-nums text-slate-400 mb-1">{e.minutes}m</span>
+                  <div
+                    className="w-full rounded-t-md transition-all"
+                    style={{
+                      height: `${heightPct}%`,
+                      backgroundColor: EMOTION_HEX[e.emotion],
+                    }}
+                  />
+                </div>
+              );
+            })
+          )}
+        </div>
+        {histogram.entries.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 pt-2 border-t border-slate-800">
+            {histogram.entries.map((e) => (
+              <div key={e.emotion} className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: EMOTION_HEX[e.emotion] }}
+                />
+                <span className="text-[11px] capitalize text-slate-300">{e.emotion}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 };
