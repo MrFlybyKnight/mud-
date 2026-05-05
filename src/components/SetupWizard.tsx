@@ -434,7 +434,7 @@ const VoiceSequenceCalibration: React.FC<VoiceSequenceCalibrationProps> = ({ onF
           {isSaving
             ? 'Saving...'
             : isLast
-              ? 'Complete Calibration'
+              ? 'Complete Setup'
               : <>Next Phrase <ArrowRight className="ml-2 h-5 w-5" /></>}
         </Button>
       </div>
