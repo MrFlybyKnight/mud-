@@ -157,6 +157,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Emergency state
   const [currentEmergency, setCurrentEmergency] = useState<EmergencyType>('none');
+  const [pendingEmergency, setPendingEmergency] = useState<EmergencyEvent | null>(null);
+  const hrBufferRef = useRef<number[]>([]);
+  const lastEmergencyRef = useRef<{ type: string; at: number } | null>(null);
   
   // Sync state
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
