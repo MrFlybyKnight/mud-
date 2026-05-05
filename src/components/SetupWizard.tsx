@@ -238,7 +238,7 @@ const SetupWizard: React.FC = () => {
           </div>
           <Button
             onClick={handleNext}
-            disabled={isCalibrating || calibrationValue === 0 || isSaving}
+            disabled={isCalibrating || isSaving || (setupStep === 2 ? !voiceBaseline : calibrationValue === 0)}
           >
             {isSaving ? 'Saving...' : setupStep < 4 ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
