@@ -1,14 +1,14 @@
 import React from 'react';
 import { EmotionType } from '@/utils/emotionUtils';
 
-const EMOTION_COLOR: Record<EmotionType, { body: string; spot: string; accent: string }> = {
-  calm:     { body: '#7ED9A0', spot: '#3FA56B', accent: '#F7B7C5' },
-  neutral:  { body: '#A8E6BE', spot: '#5CB985', accent: '#F7B7C5' },
-  focused:  { body: '#F7D560', spot: '#C9A21C', accent: '#F7B7C5' },
-  anxious:  { body: '#F7A24B', spot: '#C26A18', accent: '#F7B7C5' },
-  stressed: { body: '#E5564B', spot: '#9B2A22', accent: '#F4B6BD' },
-  bored:    { body: '#6BA8E0', spot: '#2E6BA8', accent: '#F7B7C5' },
-  excited:  { body: '#FFF7D6', spot: '#E5C25A', accent: '#F7B7C5' },
+const EMOTION_COLOR: Record<EmotionType, { body: string; spot: string; accent: string; cheek: string }> = {
+  calm:     { body: '#B8EBC8', spot: '#6FC78F', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  neutral:  { body: '#CFF1D9', spot: '#86CFA0', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  focused:  { body: '#FFE791', spot: '#E5BE3F', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  anxious:  { body: '#FFC489', spot: '#E08A39', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  stressed: { body: '#FF9088', spot: '#C24A41', accent: '#FFC9CF', cheek: '#FF99A5' },
+  bored:    { body: '#A8CDEC', spot: '#5A8FC4', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  excited:  { body: '#FFF4C7', spot: '#F0CE6A', accent: '#FFD3DE', cheek: '#FFB3C1' },
 };
 
 interface MoodCowProps {
@@ -18,6 +18,7 @@ interface MoodCowProps {
 
 const MoodCow: React.FC<MoodCowProps> = ({ emotion, className }) => {
   const c = EMOTION_COLOR[emotion] ?? EMOTION_COLOR.neutral;
+  const stroke = '#3a2a2a';
 
   return (
     <svg
@@ -26,61 +27,74 @@ const MoodCow: React.FC<MoodCowProps> = ({ emotion, className }) => {
       role="img"
       aria-label={`MūD cow — ${emotion}`}
     >
-      {/* Tail */}
-      <g stroke="#1f2937" strokeWidth="2.5" strokeLinecap="round" fill="none">
-        <path d="M168 120 Q182 118 180 138" />
-      </g>
-      <circle cx="180" cy="140" r="5" fill={c.spot} stroke="#1f2937" strokeWidth="2" />
+      {/* soft ground shadow */}
+      <ellipse cx="100" cy="178" rx="62" ry="6" fill="#000" opacity="0.08" />
 
-      {/* Legs */}
-      <g fill={c.body} stroke="#1f2937" strokeWidth="2.5">
-        <rect x="70"  y="140" width="14" height="28" rx="3" />
-        <rect x="96"  y="140" width="14" height="28" rx="3" />
-        <rect x="122" y="140" width="14" height="28" rx="3" />
-        <rect x="148" y="140" width="14" height="28" rx="3" />
+      {/* Tiny legs (chibi style — short and stubby) */}
+      <g fill={c.body} stroke={stroke} strokeWidth="2.5" strokeLinejoin="round">
+        <rect x="68"  y="148" width="18" height="22" rx="8" />
+        <rect x="114" y="148" width="18" height="22" rx="8" />
       </g>
-      {/* Hooves */}
-      <g fill="#1f2937">
-        <rect x="70"  y="164" width="14" height="5" rx="1.5" />
-        <rect x="96"  y="164" width="14" height="5" rx="1.5" />
-        <rect x="122" y="164" width="14" height="5" rx="1.5" />
-        <rect x="148" y="164" width="14" height="5" rx="1.5" />
+      {/* hoof tips */}
+      <g fill={stroke}>
+        <rect x="68"  y="164" width="18" height="6" rx="3" />
+        <rect x="114" y="164" width="18" height="6" rx="3" />
       </g>
 
-      {/* Body */}
-      <ellipse cx="115" cy="118" rx="58" ry="34" fill={c.body} stroke="#1f2937" strokeWidth="2.8" />
+      {/* Round chibi body */}
+      <ellipse cx="100" cy="135" rx="48" ry="32" fill={c.body} stroke={stroke} strokeWidth="3" />
 
-      {/* Spots */}
-      <ellipse cx="95"  cy="105" rx="10" ry="7" fill={c.spot} opacity="0.9" />
-      <ellipse cx="135" cy="125" rx="12" ry="8" fill={c.spot} opacity="0.9" />
-      <ellipse cx="155" cy="108" rx="6"  ry="4" fill={c.spot} opacity="0.9" />
+      {/* belly highlight */}
+      <ellipse cx="100" cy="148" rx="28" ry="14" fill="#fff" opacity="0.5" />
 
-      {/* Head */}
-      <ellipse cx="60" cy="92" rx="34" ry="30" fill={c.body} stroke="#1f2937" strokeWidth="2.8" />
+      {/* Spots on body */}
+      <ellipse cx="78"  cy="128" rx="9" ry="6" fill={c.spot} opacity="0.95" />
+      <ellipse cx="125" cy="142" rx="11" ry="7" fill={c.spot} opacity="0.95" />
+
+      {/* Tail — small curl */}
+      <path d="M147 122 Q160 116 158 132 Q156 142 150 138"
+            stroke={stroke} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <circle cx="151" cy="139" r="4" fill={c.spot} stroke={stroke} strokeWidth="2" />
+
+      {/* BIG cute head (chibi proportions) */}
+      <ellipse cx="100" cy="78" rx="46" ry="40" fill={c.body} stroke={stroke} strokeWidth="3" />
 
       {/* Ears */}
-      <ellipse cx="34" cy="72" rx="10" ry="7" fill={c.body} stroke="#1f2937" strokeWidth="2.5" transform="rotate(-30 34 72)" />
-      <ellipse cx="86" cy="72" rx="10" ry="7" fill={c.body} stroke="#1f2937" strokeWidth="2.5" transform="rotate(30 86 72)" />
-      <ellipse cx="34" cy="73" rx="5" ry="3" fill={c.accent} transform="rotate(-30 34 73)" />
-      <ellipse cx="86" cy="73" rx="5" ry="3" fill={c.accent} transform="rotate(30 86 73)" />
+      <ellipse cx="58" cy="62" rx="13" ry="9" fill={c.body} stroke={stroke} strokeWidth="2.5" transform="rotate(-35 58 62)" />
+      <ellipse cx="142" cy="62" rx="13" ry="9" fill={c.body} stroke={stroke} strokeWidth="2.5" transform="rotate(35 142 62)" />
+      <ellipse cx="58" cy="63" rx="6" ry="4" fill={c.accent} transform="rotate(-35 58 63)" />
+      <ellipse cx="142" cy="63" rx="6" ry="4" fill={c.accent} transform="rotate(35 142 63)" />
 
-      {/* Horns */}
-      <g fill="#FBE7B3" stroke="#1f2937" strokeWidth="2">
-        <ellipse cx="44" cy="64" rx="4" ry="6" transform="rotate(-25 44 64)" />
-        <ellipse cx="76" cy="64" rx="4" ry="6" transform="rotate(25 76 64)" />
+      {/* Tiny horns */}
+      <g fill="#FBE7B3" stroke={stroke} strokeWidth="2" strokeLinejoin="round">
+        <ellipse cx="76" cy="48" rx="5" ry="7" transform="rotate(-20 76 48)" />
+        <ellipse cx="124" cy="48" rx="5" ry="7" transform="rotate(20 124 48)" />
       </g>
 
-      {/* Snout */}
-      <ellipse cx="50" cy="105" rx="20" ry="14" fill={c.accent} stroke="#1f2937" strokeWidth="2.5" />
-      <ellipse cx="43" cy="104" rx="2" ry="3" fill="#1f2937" />
-      <ellipse cx="57" cy="104" rx="2" ry="3" fill="#1f2937" />
-      <path d="M44 113 Q50 117 56 113" stroke="#1f2937" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {/* Forehead tuft */}
+      <path d="M92 46 Q100 38 108 46 Q104 50 100 48 Q96 50 92 46Z"
+            fill={c.spot} stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
 
-      {/* Eyes */}
-      <circle cx="55" cy="84" r="4" fill="#1f2937" />
-      <circle cx="75" cy="84" r="4" fill="#1f2937" />
-      <circle cx="56.5" cy="82.5" r="1.2" fill="#fff" />
-      <circle cx="76.5" cy="82.5" r="1.2" fill="#fff" />
+      {/* Snout — soft pink muzzle */}
+      <ellipse cx="100" cy="98" rx="24" ry="16" fill={c.accent} stroke={stroke} strokeWidth="2.5" />
+      {/* Nostrils */}
+      <ellipse cx="92" cy="97" rx="2.2" ry="3" fill={stroke} />
+      <ellipse cx="108" cy="97" rx="2.2" ry="3" fill={stroke} />
+      {/* Smile */}
+      <path d="M90 108 Q100 114 110 108" stroke={stroke} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+
+      {/* Big sparkly eyes */}
+      <ellipse cx="80" cy="78" rx="6.5" ry="7.5" fill={stroke} />
+      <ellipse cx="120" cy="78" rx="6.5" ry="7.5" fill={stroke} />
+      {/* eye shine */}
+      <circle cx="82" cy="75" r="2.2" fill="#fff" />
+      <circle cx="122" cy="75" r="2.2" fill="#fff" />
+      <circle cx="78" cy="81" r="1" fill="#fff" />
+      <circle cx="118" cy="81" r="1" fill="#fff" />
+
+      {/* Rosy cheeks */}
+      <ellipse cx="68" cy="92" rx="6" ry="4" fill={c.cheek} opacity="0.75" />
+      <ellipse cx="132" cy="92" rx="6" ry="4" fill={c.cheek} opacity="0.75" />
     </svg>
   );
 };
