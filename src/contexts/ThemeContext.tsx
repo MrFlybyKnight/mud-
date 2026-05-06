@@ -1,8 +1,5 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/firebase/config";
-import { useAuth } from "@/contexts/AuthContext";
 
 type Theme = "light" | "dark";
 
@@ -15,7 +12,6 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { uid } = useAuth();
   const [theme, setThemeState] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem("theme") as Theme | null;
     if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
@@ -23,7 +19,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return prefersDark ? "dark" : "light";
   });
 
-  // Apply theme to <html> + persist locally
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
@@ -31,35 +26,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Hydrate from Firestore when user signs in
-  useEffect(() => {
-    if (!uid) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, "users", uid, "settings", "preferences"));
-        if (cancelled) return;
-        const t = (snap.data() as { theme?: Theme } | undefined)?.theme;
-        if (t === "light" || t === "dark") setThemeState(t);
-      } catch (e) {
-        console.warn("[Theme] hydrate failed", e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [uid]);
-
-  const persistTheme = (t: Theme) => {
-    setThemeState(t);
-    if (uid) {
-      setDoc(doc(db, "users", uid, "settings", "preferences"), { theme: t }, { merge: true })
-        .catch((e) => console.warn("[Theme] save failed", e));
-    }
-  };
-
-  const toggleTheme = () => persistTheme(theme === "light" ? "dark" : "light");
+  const setTheme = (t: Theme) => setThemeState(t);
+  const toggleTheme = () => setThemeState((prev) => (prev === "light" ? "dark" : "light"));
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme: persistTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
