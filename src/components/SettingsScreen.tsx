@@ -12,7 +12,7 @@ import { db, auth } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
+
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -48,6 +48,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
+
+import TrustedCircleManager from './TrustedCircleManager';
 
 interface SettingsScreenProps {
   onClose: () => void;
@@ -132,11 +134,11 @@ const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOpenTrusted, onEditProfile }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOpenTrusted: _onOpenTrusted, onEditProfile }) => {
   const { uid, user, logout } = useAuth();
   const { isMonitoring, toggleMonitoring, startSetup } = useMonitoring();
   const { theme, toggleTheme } = useTheme();
-  const { isActive: trustedActive, toggleActive: toggleTrusted } = useTrustedCircle();
+  const [trustedManagerOpen, setTrustedManagerOpen] = useState(false);
   const { toast } = useToast();
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
@@ -283,6 +285,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
 
   const version = (pkg as { version?: string }).version || '0.0.0';
 
+  if (trustedManagerOpen) {
+    return <TrustedCircleManager onBack={() => setTrustedManagerOpen(false)} />;
+  }
+
   return (
     <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
       <header className="flex items-center justify-between shrink-0">
@@ -428,8 +434,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
             <Row
               icon={Users}
               label="Manage Trusted Circle"
-              description={trustedActive ? 'Currently open' : undefined}
-              onClick={() => { if (!trustedActive) toggleTrusted(); onOpenTrusted(); }}
+              onClick={() => setTrustedManagerOpen(true)}
             />
           </Card>
         </section>
