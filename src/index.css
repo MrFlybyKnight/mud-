@@ -151,3 +151,66 @@
 html.text-size-normal { font-size: 16px; }
 html.text-size-large { font-size: 18px; }
 html.text-size-xlarge { font-size: 20px; }
+
+/* ============================================================
+   Light mode — calm, clinical, Apple Health / Calm-inspired.
+   Remaps the dark-navy/slate utility classes used throughout the
+   app without requiring component refactors.
+   ============================================================ */
+html:not(.dark) body {
+  background-color: #F8F7F4;
+  color: #1A1A2E;
+}
+
+/* App-level dark navy background literal */
+html:not(.dark) .bg-\[hsl\(222_47\%_8\%\)\] {
+  background-color: #F8F7F4 !important;
+}
+
+/* Surfaces: cards become clean white with a subtle shadow */
+html:not(.dark) [class*="bg-slate-900"] {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+/* Slightly recessed surfaces (e.g. hover, nested rows) */
+html:not(.dark) [class*="bg-slate-800"] {
+  background-color: #F1EFEA !important;
+  box-shadow: none !important;
+}
+
+/* Borders */
+html:not(.dark) [class*="border-slate-800"],
+html:not(.dark) [class*="border-slate-700"] {
+  border-color: #E5E2DC !important;
+}
+html:not(.dark) [class*="divide-slate-800"] > * + * {
+  border-color: #E5E2DC !important;
+}
+
+/* Text — dark charcoal hierarchy */
+html:not(.dark) .text-slate-50,
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200 {
+  color: #1A1A2E !important;
+}
+html:not(.dark) .text-slate-300 { color: #2D2D44 !important; }
+html:not(.dark) .text-slate-400 { color: #6B7280 !important; }
+html:not(.dark) .text-slate-500 { color: #94A3B8 !important; }
+
+/* Status pill backgrounds (Active / Silent / Paused) — soften for light */
+html:not(.dark) .bg-emerald-500\/15 { background-color: rgba(16, 185, 129, 0.10) !important; }
+html:not(.dark) .bg-sky-500\/15     { background-color: rgba(14, 165, 233, 0.10) !important; }
+html:not(.dark) .bg-slate-500\/15   { background-color: #ECEAE4 !important; }
+html:not(.dark) .text-emerald-300   { color: #047857 !important; }
+html:not(.dark) .text-sky-300       { color: #0369A1 !important; }
+
+/* Teal accent (active nav button) */
+html:not(.dark) .bg-teal-500\/20 { background-color: rgba(20, 184, 166, 0.14) !important; }
+html:not(.dark) .text-teal-200,
+html:not(.dark) .text-teal-300 { color: #0F766E !important; }
+html:not(.dark) .border-teal-400\/60 { border-color: rgba(20, 184, 166, 0.55) !important; }
+
+/* Inactive monitoring/silent toggle backgrounds */
+html:not(.dark) .bg-slate-800\/60 { background-color: #ECEAE4 !important; }
+html:not(.dark) .bg-slate-900\/90 { background-color: #FFFFFF !important; }
