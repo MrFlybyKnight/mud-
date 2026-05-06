@@ -216,7 +216,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const last = lastLoquacityNotificationTime.current;
       if (last && Date.now() - last.getTime() < 20 * 60 * 1000) return;
 
-      const notif = getLoquacitySuggestion(ratio, currentEmotion);
+      const notif = getLoquacitySuggestion(ratio, currentEmotionRef.current as any);
       if (notif) {
         processNotification(notif);
         lastLoquacityNotificationTime.current = new Date();
