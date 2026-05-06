@@ -49,6 +49,8 @@ import {
 import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
 
+import TrustedCircleManager from './TrustedCircleManager';
+
 interface SettingsScreenProps {
   onClose: () => void;
   onOpenTrusted: () => void;
