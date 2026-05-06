@@ -36,7 +36,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const lastSpeechNotificationTime = useRef<Date | null>(null);
   const lastEmotionNotificationTime = useRef<Date | null>(null);
   const lastWellnessNotificationTime = useRef<Date | null>(null);
+  const lastLoquacityNotificationTime = useRef<Date | null>(null);
+  const lastLoquacitySubcheckId = useRef<string | null>(null);
   const emotionDurationRef = useRef<Record<string, number>>({});
+  const { uid } = useAuth();
   
   const { toast } = useToast();
   const { 
