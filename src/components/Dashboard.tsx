@@ -5,7 +5,7 @@ import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
 import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
-import SettingsDialog from './SettingsDialog';
+import SettingsScreen from './SettingsScreen';
 import HistoryScreen from './HistoryScreen';
 import EmergencyAlert from './EmergencyAlert';
 import EmotionTimelineBar from './EmotionTimelineBar';
@@ -138,6 +138,12 @@ const Dashboard: React.FC = () => {
 
         {historyOpen ? (
           <HistoryScreen onBack={() => setHistoryOpen(false)} />
+        ) : settingsOpen ? (
+          <SettingsScreen
+            onClose={() => setSettingsOpen(false)}
+            onOpenTrusted={() => { setSettingsOpen(false); if (!trustedActive) toggleTrusted(); }}
+            onEditProfile={() => { /* profile editing handled elsewhere */ }}
+          />
         ) : (
           <>
             {/* Hero: emotion + cow + trusted circle overlay */}
@@ -219,7 +225,7 @@ const Dashboard: React.FC = () => {
         </nav>
       </div>
 
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} hideTrigger />
+      
 
       {profileSaving && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-4 py-2 text-xs text-slate-200 shadow-lg backdrop-blur animate-fade-in">
