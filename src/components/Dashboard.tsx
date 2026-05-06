@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
               <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
                 {currentEmotion}
               </h2>
-              <MooMeter className="mt-2 w-full max-w-xs shrink-0" />
+              <MooMeter className="mt-2 w-[90%] shrink-0" />
               <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
                 <MoodCow
                   emotion={currentEmotion}
