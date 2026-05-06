@@ -5,16 +5,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getEmotionColor } from '@/utils/emotionUtils';
 
 interface LoquacityMeterProps {
   className?: string;
 }
 
-const colorFor = (ratio: number) => {
-  if (ratio <= 40) return 'bg-emerald-500';
-  if (ratio <= 60) return 'bg-yellow-400';
-  if (ratio <= 80) return 'bg-orange-500';
-  return 'bg-red-500';
+// Base loquacity color (HSL) per ratio band
+const baseColorFor = (ratio: number): string => {
+  if (ratio <= 40) return 'hsl(146, 76%, 48%)'; // green
+  if (ratio <= 60) return 'hsl(47, 100%, 60%)'; // yellow
+  if (ratio <= 80) return 'hsl(22, 100%, 55%)'; // orange
+  return 'hsl(0, 84%, 60%)'; // red
 };
 
 const textFor = (ratio: number) => {
@@ -26,11 +28,10 @@ const textFor = (ratio: number) => {
 
 const LoquacityMeter: React.FC<LoquacityMeterProps> = ({ className }) => {
   const { uid } = useAuth();
-  const { isMonitoring } = useMonitoring();
+  const { isMonitoring, currentEmotion } = useMonitoring();
   const [ratio, setRatio] = useState<number | null>(null);
   const [hasSpeech, setHasSpeech] = useState(false);
 
-  // Read latest subcheck — refreshes only when a new one is written (every 20 min)
   useEffect(() => {
     if (!uid) return;
     const q = query(
@@ -53,6 +54,13 @@ const LoquacityMeter: React.FC<LoquacityMeterProps> = ({ className }) => {
 
   if (!isMonitoring || !hasSpeech || ratio === null) return null;
 
+  const baseColor = baseColorFor(ratio);
+  const emotionColor = currentEmotion ? getEmotionColor(currentEmotion) : null;
+  // Blend: base loquacity color underneath, emotion tint at 30% on top.
+  const fillBackground = emotionColor
+    ? `linear-gradient(to right, ${baseColor}, ${baseColor}), linear-gradient(to right, ${emotionColor}, ${emotionColor})`
+    : baseColor;
+
   return (
     <div className={cn('rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2', className)}>
       <div className="flex items-center gap-2">
@@ -62,9 +70,19 @@ const LoquacityMeter: React.FC<LoquacityMeterProps> = ({ className }) => {
       </div>
       <div className="mt-1.5 h-2 w-full rounded-full bg-slate-800 overflow-hidden">
         <div
-          className={cn('h-full rounded-full transition-all duration-500', colorFor(ratio))}
-          style={{ width: `${Math.min(100, Math.max(0, ratio))}%` }}
-        />
+          className="h-full rounded-full transition-all duration-500 relative"
+          style={{
+            width: `${Math.min(100, Math.max(0, ratio))}%`,
+            background: baseColor,
+          }}
+        >
+          {emotionColor && (
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{ background: emotionColor, opacity: 0.3 }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
