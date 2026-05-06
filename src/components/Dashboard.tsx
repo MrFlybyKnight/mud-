@@ -9,6 +9,7 @@ import SettingsScreen from './SettingsScreen';
 import HistoryScreen from './HistoryScreen';
 import EmergencyAlert from './EmergencyAlert';
 import EmotionTimelineBar from './EmotionTimelineBar';
+import LoquacityMeter from './LoquacityMeter';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
