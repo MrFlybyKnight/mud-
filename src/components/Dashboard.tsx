@@ -153,6 +153,7 @@ const Dashboard: React.FC = () => {
               <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
                 {currentEmotion}
               </h2>
+              <LoquacityMeter className="mt-2 w-full max-w-xs shrink-0" />
               <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
                 <MoodCow
                   emotion={currentEmotion}
@@ -167,7 +168,7 @@ const Dashboard: React.FC = () => {
 
             {/* Emotion timeline (last 6h) */}
             <EmotionTimelineBar onOpen={() => setHistoryOpen(true)} className="shrink-0" />
-            <LoquacityMeter className="shrink-0" />
+
 
             {/* Vitals row */}
             <section className="grid grid-cols-2 gap-3 shrink-0">
