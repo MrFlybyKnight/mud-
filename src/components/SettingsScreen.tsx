@@ -134,11 +134,11 @@ const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOpenTrusted, onEditProfile }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOpenTrusted: _onOpenTrusted, onEditProfile }) => {
   const { uid, user, logout } = useAuth();
   const { isMonitoring, toggleMonitoring, startSetup } = useMonitoring();
   const { theme, toggleTheme } = useTheme();
-  const { isActive: trustedActive, toggleActive: toggleTrusted } = useTrustedCircle();
+  const [trustedManagerOpen, setTrustedManagerOpen] = useState(false);
   const { toast } = useToast();
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
@@ -430,8 +430,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
             <Row
               icon={Users}
               label="Manage Trusted Circle"
-              description={trustedActive ? 'Currently open' : undefined}
-              onClick={() => { if (!trustedActive) toggleTrusted(); onOpenTrusted(); }}
+              onClick={() => setTrustedManagerOpen(true)}
             />
           </Card>
         </section>
