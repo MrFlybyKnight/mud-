@@ -55,7 +55,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   } = useMonitoring();
   
   const { currentProfile } = useProfile();
-  
+
+  // Keep latest emotion accessible inside the subcheck snapshot callback
+  useEffect(() => { currentEmotionRef.current = currentEmotion; }, [currentEmotion]);
+
+
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.read).length;
   
