@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useMonitoring } from './MonitoringContext';
-import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, getLoquacitySuggestion, sendWatchNotification } from '@/utils/notificationUtils';
+import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, getLoquacitySuggestion, getChattyPattyNudge, sendWatchNotification } from '@/utils/notificationUtils';
 import { useProfile } from './ProfileContext';
 import { useAuth } from './AuthContext';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -39,6 +39,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const lastLoquacityNotificationTime = useRef<Date | null>(null);
   const lastLoquacitySubcheckId = useRef<string | null>(null);
   const emotionDurationRef = useRef<Record<string, number>>({});
+  const currentEmotionRef = useRef<string | undefined>(undefined);
   const { uid } = useAuth();
   
   const { toast } = useToast();
@@ -54,7 +55,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   } = useMonitoring();
   
   const { currentProfile } = useProfile();
-  
+
+  // Keep latest emotion accessible inside the subcheck snapshot callback
+  useEffect(() => { currentEmotionRef.current = currentEmotion; }, [currentEmotion]);
+
+
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.read).length;
   
@@ -211,10 +216,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const last = lastLoquacityNotificationTime.current;
       if (last && Date.now() - last.getTime() < 20 * 60 * 1000) return;
 
-      const notif = getLoquacitySuggestion(ratio);
+      const notif = getLoquacitySuggestion(ratio, currentEmotionRef.current as any);
       if (notif) {
         processNotification(notif);
         lastLoquacityNotificationTime.current = new Date();
+
+        // At 90%+ always add the Chatty Patty second nudge, ≥5 min later.
+        if (ratio >= 90) {
+          setTimeout(() => {
+            processNotification(getChattyPattyNudge());
+          }, 5 * 60 * 1000);
+        }
       }
     });
     return () => unsub();
