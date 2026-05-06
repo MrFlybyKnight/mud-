@@ -146,3 +146,8 @@
     transform: translateX(-50%);
   }
 }
+
+/* Global text-size scaling (controlled by Settings) */
+html.text-size-normal { font-size: 16px; }
+html.text-size-large { font-size: 18px; }
+html.text-size-xlarge { font-size: 20px; }
