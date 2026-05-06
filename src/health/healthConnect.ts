@@ -42,8 +42,9 @@ async function getPlugin(): Promise<HCPlugin | null> {
       return null;
     }
     // Dynamic import keeps web builds from failing if plugin isn't installed.
-    const mod = await import(/* @vite-ignore */ 'capacitor-health-connect').catch(() => null);
-    cachedPlugin = (mod?.HealthConnect as HCPlugin) ?? null;
+    const moduleName = 'capacitor-health-connect';
+    const mod = await import(/* @vite-ignore */ moduleName).catch(() => null) as { HealthConnect?: HCPlugin } | null;
+    cachedPlugin = mod?.HealthConnect ?? null;
   } catch {
     cachedPlugin = null;
   }
