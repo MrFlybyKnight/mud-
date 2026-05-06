@@ -167,6 +167,7 @@ const Dashboard: React.FC = () => {
 
             {/* Emotion timeline (last 6h) */}
             <EmotionTimelineBar onOpen={() => setHistoryOpen(true)} className="shrink-0" />
+            <LoquacityMeter className="shrink-0" />
 
             {/* Vitals row */}
             <section className="grid grid-cols-2 gap-3 shrink-0">
