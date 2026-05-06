@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from './ProfileContext';
+import { readLatestHeartRate, readRestingHeartRate, isAvailable as isHealthConnectAvailable } from '@/health/healthConnect';
 
 // Define the types of fitness services we support
 export type FitnessServiceType = 'strava' | 'apple_health' | 'google_fit' | 'fitbit' | 'garmin' | 'none';
@@ -350,23 +351,38 @@ export const FitnessProvider: React.FC<{ children: React.ReactNode }> = ({ child
             endTime: new Date(yesterday.setHours(6, 30))
           }
         };
-      case 'google_fit':
+      case 'google_fit': {
+        // Use Health Connect when available; fall back to simulated values otherwise.
+        const available = await isHealthConnectAvailable();
+        if (available) {
+          const [current, resting] = await Promise.all([
+            readLatestHeartRate(),
+            readRestingHeartRate(),
+          ]);
+          return {
+            heartRate: {
+              current: current ?? undefined,
+              resting: resting ?? undefined,
+            },
+          };
+        }
         return {
           steps: 7500 + Math.floor(Math.random() * 3000),
           activities: [
             {
               type: 'Walking',
-              duration: 30 * 60, // 30 minutes in seconds
+              duration: 30 * 60,
               startTime: yesterday,
               endTime: new Date(yesterday.getTime() + 30 * 60 * 1000),
-              calories: 200
-            }
+              calories: 200,
+            },
           ],
           heartRate: {
             current: 68 + Math.floor(Math.random() * 12),
             resting: 62 + Math.floor(Math.random() * 6),
-          }
+          },
         };
+      }
       case 'fitbit':
         return {
           steps: 9000 + Math.floor(Math.random() * 3000),
