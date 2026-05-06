@@ -12,7 +12,7 @@ import { db, auth } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
+
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
