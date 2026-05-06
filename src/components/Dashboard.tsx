@@ -9,7 +9,7 @@ import SettingsScreen from './SettingsScreen';
 import HistoryScreen from './HistoryScreen';
 import EmergencyAlert from './EmergencyAlert';
 import EmotionTimelineBar from './EmotionTimelineBar';
-import LoquacityMeter from './LoquacityMeter';
+import MooMeter from './MooMeter';
 import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
@@ -153,7 +153,7 @@ const Dashboard: React.FC = () => {
               <h2 className="mt-1 text-3xl font-semibold capitalize text-slate-50">
                 {currentEmotion}
               </h2>
-              <LoquacityMeter className="mt-2 w-full max-w-xs shrink-0" />
+              <MooMeter className="mt-2 w-full max-w-xs shrink-0" />
               <div className="relative mt-2 flex h-full max-h-[42vh] w-full items-center justify-center">
                 <MoodCow
                   emotion={currentEmotion}

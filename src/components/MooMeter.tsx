@@ -7,7 +7,7 @@ import { Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getEmotionColor } from '@/utils/emotionUtils';
 
-interface LoquacityMeterProps {
+interface MooMeterProps {
   className?: string;
 }
 
@@ -26,7 +26,7 @@ const textFor = (ratio: number) => {
   return 'text-red-300';
 };
 
-const LoquacityMeter: React.FC<LoquacityMeterProps> = ({ className }) => {
+const MooMeter: React.FC<MooMeterProps> = ({ className }) => {
   const { uid } = useAuth();
   const { isMonitoring, currentEmotion } = useMonitoring();
   const [ratio, setRatio] = useState<number | null>(null);
@@ -87,4 +87,4 @@ const LoquacityMeter: React.FC<LoquacityMeterProps> = ({ className }) => {
   );
 };
 
-export default LoquacityMeter;
+export default MooMeter;
