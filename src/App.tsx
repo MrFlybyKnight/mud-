@@ -16,6 +16,7 @@ import { TrustedCircleProvider } from './contexts/TrustedCircleContext';
 import WatchNotification from './components/WatchNotification';
 import EmergencyOverlay from './components/EmergencyOverlay';
 import { DebugPanel } from './components/DebugPanel';
+import ThemeFirestoreSync from './components/ThemeFirestoreSync';
 import './App.css';
 
 const App = () => {
@@ -26,6 +27,7 @@ const App = () => {
           <PlatformProvider>
             <AuthProvider>
               <ProfileProvider>
+                <ThemeFirestoreSync />
                 <MonitoringProvider>
                   <TrustedCircleProvider>
                     <NotificationProvider>
