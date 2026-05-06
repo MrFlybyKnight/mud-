@@ -2,8 +2,11 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useMonitoring } from './MonitoringContext';
-import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, sendWatchNotification } from '@/utils/notificationUtils';
+import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, getLoquacitySuggestion, sendWatchNotification } from '@/utils/notificationUtils';
 import { useProfile } from './ProfileContext';
+import { useAuth } from './AuthContext';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 interface NotificationContextType {
   notifications: NotificationData[];
