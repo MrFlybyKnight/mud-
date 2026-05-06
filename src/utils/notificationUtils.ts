@@ -145,35 +145,67 @@ export const getSpeechSuggestion = (
  * Tiers: 61%, 71%, 81%, 90%+. Sustained over a full subcheck (20m) before firing.
  * Caller is responsible for spacing (≥20 min between fires).
  */
-export const getLoquacitySuggestion = (talkRatio: number): NotificationData | null => {
-  if (talkRatio < 61) return null;
-  let title = 'Loquacity check';
-  let message = '';
-  let priority: 'low' | 'medium' | 'high' = 'low';
-  if (talkRatio >= 90) {
-    message = 'Full Chatty Patty mode 🐄 — let them speak!';
-    priority = 'high';
-  } else if (talkRatio >= 81) {
-    message = "Time to listen — you've been leading the conversation for a while";
-    priority = 'high';
-  } else if (talkRatio >= 71) {
-    message = 'Give the conversation some breathing room';
-    priority = 'medium';
-  } else {
-    message = "You're doing most of the talking — try asking them a question";
-    priority = 'low';
+/**
+ * Emotion-paired loquacity message. Returns the context-aware nudge.
+ * Caller should still gate on sustained subcheck + spacing.
+ */
+export const getLoquacityMessageForEmotion = (
+  talkRatio: number,
+  emotion?: EmotionType,
+): string => {
+  if (talkRatio >= 81) {
+    switch (emotion) {
+      case 'anxious':
+        return "You seem anxious and it's coming through — slow down, take a breath, let the conversation breathe";
+      case 'stressed':
+        return "You're stressed and talking fast. Pause, breathe, let the conversation come to you";
+      case 'excited':
+        return 'Your energy is great — give them a chance to match it! Let them respond';
+      case 'focused':
+        return "You're locked in — make sure you're not losing them. Ask a question";
+      case 'calm':
+        return "You're calm but carrying the conversation — open it up, ask them something";
+      default:
+        return "You've been leading the conversation for a while — give them some room";
+    }
   }
+  if (talkRatio >= 71) return 'Give the conversation some breathing room';
+  return "You're doing most of the talking — try asking them a question";
+};
+
+export const getLoquacitySuggestion = (
+  talkRatio: number,
+  emotion?: EmotionType,
+): NotificationData | null => {
+  if (talkRatio < 61) return null;
+  const priority: 'low' | 'medium' | 'high' =
+    talkRatio >= 81 ? 'high' : talkRatio >= 71 ? 'medium' : 'low';
   return {
     id: `loquacity-${Date.now()}`,
     type: 'speech',
-    title,
-    message,
+    title: 'Loquacity check',
+    message: getLoquacityMessageForEmotion(talkRatio, emotion),
     timestamp: new Date(),
     priority,
     read: false,
     actionable: false,
   };
 };
+
+/**
+ * Secondary "Chatty Patty" nudge fired at 90%+ regardless of emotion.
+ * Caller is responsible for spacing it ≥5 min after the primary nudge.
+ */
+export const getChattyPattyNudge = (): NotificationData => ({
+  id: `loquacity-cp-${Date.now()}`,
+  type: 'speech',
+  title: 'Chatty Patty',
+  message: 'Full Chatty Patty mode 🐄 — let them speak!',
+  timestamp: new Date(),
+  priority: 'high',
+  read: false,
+  actionable: false,
+});
 
 /**
  * Gets suggestions based on emotion
