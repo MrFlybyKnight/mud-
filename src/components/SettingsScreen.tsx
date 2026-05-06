@@ -285,6 +285,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
 
   const version = (pkg as { version?: string }).version || '0.0.0';
 
+  if (trustedManagerOpen) {
+    return <TrustedCircleManager onBack={() => setTrustedManagerOpen(false)} />;
+  }
+
   return (
     <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
       <header className="flex items-center justify-between shrink-0">
