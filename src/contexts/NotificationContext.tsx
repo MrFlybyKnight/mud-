@@ -187,7 +187,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     return () => clearInterval(checkInterval);
   }, [isSetupComplete]);
-  
+
+  // Loquacity notifications — triggered on each new subcheck if talkRatio is sustained high.
+  // Spaced ≥20 min apart by checking lastLoquacityNotificationTime.
+  useEffect(() => {
+    if (!uid || !isSetupComplete || !isMonitoring) return;
+    const q = query(
+      collection(db, 'users', uid, 'subchecks'),
+      orderBy('timestamp', 'desc'),
+      limit(1),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const docSnap = snap.docs[0];
+      if (!docSnap) return;
+      // Only react to a *new* subcheck (one full sustained period)
+      if (lastLoquacitySubcheckId.current === docSnap.id) return;
+      lastLoquacitySubcheckId.current = docSnap.id;
+
+      const data = docSnap.data() as { talkRatio?: number; speechRate?: number };
+      const ratio = typeof data.talkRatio === 'number' ? data.talkRatio : Math.round(data.speechRate ?? 0);
+
+      // Spacing guard — minimum 20 min between loquacity nudges
+      const last = lastLoquacityNotificationTime.current;
+      if (last && Date.now() - last.getTime() < 20 * 60 * 1000) return;
+
+      const notif = getLoquacitySuggestion(ratio);
+      if (notif) {
+        processNotification(notif);
+        lastLoquacityNotificationTime.current = new Date();
+      }
+    });
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, isSetupComplete, isMonitoring]);
+
   // Send a test notification
   const sendTestNotification = (type: 'heart' | 'speech' | 'emotion' | 'general' = 'general') => {
     let notification: NotificationData | null = null;
