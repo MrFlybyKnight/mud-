@@ -39,7 +39,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const lastLoquacityNotificationTime = useRef<Date | null>(null);
   const lastLoquacitySubcheckId = useRef<string | null>(null);
   const emotionDurationRef = useRef<Record<string, number>>({});
-  const currentEmotionRef = useRef<typeof currentEmotion | null>(null);
+  const currentEmotionRef = useRef<string | undefined>(undefined);
   const { uid } = useAuth();
   
   const { toast } = useToast();
