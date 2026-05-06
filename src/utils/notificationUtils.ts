@@ -141,6 +141,41 @@ export const getSpeechSuggestion = (
 };
 
 /**
+ * Loquacity (talk-ratio) suggestions — escalating tone as ratio climbs.
+ * Tiers: 61%, 71%, 81%, 90%+. Sustained over a full subcheck (20m) before firing.
+ * Caller is responsible for spacing (≥20 min between fires).
+ */
+export const getLoquacitySuggestion = (talkRatio: number): NotificationData | null => {
+  if (talkRatio < 61) return null;
+  let title = 'Loquacity check';
+  let message = '';
+  let priority: 'low' | 'medium' | 'high' = 'low';
+  if (talkRatio >= 90) {
+    message = 'Full Chatty Patty mode 🐄 — let them speak!';
+    priority = 'high';
+  } else if (talkRatio >= 81) {
+    message = "Time to listen — you've been leading the conversation for a while";
+    priority = 'high';
+  } else if (talkRatio >= 71) {
+    message = 'Give the conversation some breathing room';
+    priority = 'medium';
+  } else {
+    message = "You're doing most of the talking — try asking them a question";
+    priority = 'low';
+  }
+  return {
+    id: `loquacity-${Date.now()}`,
+    type: 'speech',
+    title,
+    message,
+    timestamp: new Date(),
+    priority,
+    read: false,
+    actionable: false,
+  };
+};
+
+/**
  * Gets suggestions based on emotion
  */
 export const getEmotionSuggestion = (

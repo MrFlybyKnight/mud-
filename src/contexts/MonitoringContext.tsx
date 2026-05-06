@@ -595,6 +595,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await addDoc(collection(db, 'users', uid, 'subchecks'), {
           heartRate: avg(buf.heartRates),
           speechRate: avg(buf.speechRates),
+          talkRatio: Math.round(avg(buf.speechRates)),
           speechTime: sum(buf.speechTimes),
           dominantEmotion: dominant(buf.emotions),
           timestamp: serverTimestamp(),
