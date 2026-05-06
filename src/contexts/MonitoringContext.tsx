@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
 
 // Define the assessment data structure
 interface AssessmentData {
@@ -159,6 +160,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [currentEmergency, setCurrentEmergency] = useState<EmergencyType>('none');
   const [pendingEmergency, setPendingEmergency] = useState<EmergencyEvent | null>(null);
   const hrBufferRef = useRef<number[]>([]);
+  const latestHrvRef = useRef<number | null>(null);
   const lastEmergencyRef = useRef<{ type: string; at: number } | null>(null);
   
   // Sync state
@@ -440,19 +442,22 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Only proceed if app is in foreground OR background running is enabled
     if (!isAppForeground.current && !runInBackground) return;
     
-    const heartInterval = setInterval(() => {
+    const heartInterval = setInterval(async () => {
       // Generate heart rate with influence from speech and current status
       let baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
       if (isTalking) baseline += 10;
       if (speechStatus === 'high') baseline += 5;
-      
-      const newHeartRate = generateHeartRate(baseline, 8);
+
+      const { bpm: newHeartRate } = await readHeartRateOrSimulate(baseline, 8);
       setHeartRate(newHeartRate);
-      
+
+      // Capture latest HRV alongside; null if unavailable.
+      const hrv = await readLatestHRV();
+      if (hrv != null) latestHrvRef.current = hrv;
+
       // Add to assessment data
       if (isSetupComplete) {
         setCurrentAssessmentData(prev => {
-          // Initialize start time if not set
           const startTime = prev.startTime || new Date();
           return {
             heartRateReadings: [...prev.heartRateReadings, newHeartRate],
@@ -594,6 +599,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         await addDoc(collection(db, 'users', uid, 'subchecks'), {
           heartRate: avg(buf.heartRates),
+          hrv: latestHrvRef.current,
           speechRate: avg(buf.speechRates),
           talkRatio: Math.round(avg(buf.speechRates)),
           speechTime: sum(buf.speechTimes),

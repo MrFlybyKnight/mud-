@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
+import HealthConnectPermission from '@/components/HealthConnectPermission';
+import { hasGrantedPermissions } from '@/health/healthConnect';
 
 const AppContent: React.FC = () => {
   const {
@@ -46,6 +48,7 @@ const AppContent: React.FC = () => {
 
 const Index: React.FC = () => {
   const { user, loading } = useAuth();
+  const [permsResolved, setPermsResolved] = useState<boolean>(() => hasGrantedPermissions());
 
   if (loading) {
     return (
@@ -62,6 +65,10 @@ const Index: React.FC = () => {
         <AuthForm />
       </div>
     );
+  }
+
+  if (!permsResolved) {
+    return <HealthConnectPermission onDone={() => setPermsResolved(true)} />;
   }
 
   return <AppContent />;
