@@ -13,20 +13,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
+import { getEmotionColor, ALL_EMOTIONS } from '@/utils/emotionUtils';
 import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const EMOTION_HEX: Record<EmotionType, string> = {
-  calm: '#22c55e',
-  focused: '#3b82f6',
-  anxious: '#f97316',
-  stressed: '#ef4444',
-  bored: '#a855f7',
-  excited: '#eab308',
-  neutral: '#94a3b8',
-};
-
-const EMOTION_ORDER: EmotionType[] = ['calm', 'focused', 'anxious', 'stressed', 'bored', 'excited', 'neutral'];
+const EMOTION_ORDER: EmotionType[] = ALL_EMOTIONS;
 
 interface Checkpoint {
   id: string;
