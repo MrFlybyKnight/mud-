@@ -14,8 +14,8 @@ export default function UpgradeModal() {
     <Dialog open={open} onOpenChange={(o) => !o && closeUpgrade()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center">
-          <div className="mb-2">
-            <MoodCow emotion="happy" size={96} />
+          <div className="mb-2 w-24 h-24">
+            <MoodCow emotion="happy" className="w-full h-full" />
           </div>
           <DialogTitle className="text-xl">
             {info ? info.title : "Upgrade MūD"}
