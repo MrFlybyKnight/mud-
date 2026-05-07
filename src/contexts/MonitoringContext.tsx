@@ -787,6 +787,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     lastWriteStatus,
     lastWriteAt,
     queuedMetricsCount,
+    subcheckWriteCount,
   };
   
   return (
