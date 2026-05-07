@@ -175,6 +175,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lastWriteStatus, setLastWriteStatus] = useState<'success' | 'failed' | 'queued' | 'none'>('none');
   const [lastWriteAt, setLastWriteAt] = useState<Date | null>(null);
   const [queuedMetricsCount, setQueuedMetricsCount] = useState<number>(0);
+  const [subcheckWriteCount, setSubcheckWriteCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rolling aggregation buffers
