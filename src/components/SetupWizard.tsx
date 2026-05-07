@@ -127,6 +127,7 @@ const SetupWizard: React.FC = () => {
         },
         { merge: true },
       );
+      console.log('[FirestoreWrite] trigger=setup-wizard-voice-baseline → users/%s', user.uid);
       setBaselineVoiceSpeed(rate);
       setBaselineVoiceTone(toneAverage);
 
