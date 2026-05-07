@@ -45,7 +45,7 @@ const Index: React.FC = () => {
       if (hasGrantedHealth() && hasGrantedMic()) { if (!cancelled) setPermsResolved(true); return; }
       if (hasDeclinedPermissions()) { if (!cancelled) setPermsResolved(true); return; }
       try {
-        const settings = await getUserSettings(user.uid) as (Record<string, unknown> | null);
+        const settings = (await getUserSettings(user.uid)) as unknown as (Record<string, unknown> | null);
         if (settings && settings.permissionsDeclined === true) {
           try { localStorage.setItem('permissions.declined', '1'); } catch { /* noop */ }
           if (!cancelled) setPermsResolved(true);
