@@ -35,9 +35,10 @@ const ThemeFirestoreSync: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // Persist on subsequent changes
+  // Persist on subsequent changes (user-initiated theme toggle only).
   useEffect(() => {
     if (!uid || !hydratedRef.current) return;
+    console.log('[FirestoreWrite] trigger=theme-change → users/%s/settings/preferences', uid);
     setDoc(doc(db, 'users', uid, 'settings', 'preferences'), { theme }, { merge: true })
       .catch((e) => console.warn('[Theme] save failed', e));
   }, [theme, uid]);

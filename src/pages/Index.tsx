@@ -13,7 +13,6 @@ const AppContent: React.FC = () => {
     isSetupHydrating,
     isMonitoring,
     toggleMonitoring,
-    manualSync
   } = useMonitoring();
 
   useEffect(() => {
@@ -21,20 +20,9 @@ const AppContent: React.FC = () => {
     if (!isMonitoring && isSetupComplete) {
       toggleMonitoring();
     }
-    if (isSetupComplete) {
-      console.log('Navigating to dashboard');
-      manualSync();
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isSetupComplete) {
-        manualSync();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isSetupComplete, isSetupHydrating, isMonitoring, toggleMonitoring, manualSync]);
+    // Note: no automatic Firestore sync on navigation or visibility change.
+    // Writes are strictly event-driven (see MonitoringContext).
+  }, [isSetupComplete, isSetupHydrating, isMonitoring, toggleMonitoring]);
 
   return (
     <div className="min-h-screen bg-background">

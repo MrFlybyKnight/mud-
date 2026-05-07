@@ -10,7 +10,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
-  const { resolveEmergency, manualSync } = useMonitoring();
+  const { resolveEmergency } = useMonitoring();
   const { currentProfile } = useProfile();
   
   const cardClass = platformClass(platform, {
@@ -24,18 +24,15 @@ const EmergencyAlert = () => {
     const phoneToCall = currentProfile.phoneNumber || '911';
     
     console.log('Emergency call initiated to', phoneToCall);
-    // In a real app, this would connect to emergency services
-    
-    // Sync data immediately during emergency
-    manualSync();
+    // In a real app, this would connect to emergency services.
+    // The distress event has already been written to Firestore by the
+    // event-driven trigger in MonitoringContext.
   };
   
   const handleDismiss = () => {
-    // Clear the emergency state
+    // Clear the emergency state. No additional Firestore write here —
+    // writes are strictly event-driven.
     resolveEmergency();
-    
-    // Also trigger a sync
-    manualSync();
   };
 
   return (
