@@ -94,6 +94,10 @@ interface MonitoringContextType {
   lastWriteStatus: 'success' | 'failed' | 'queued' | 'none';
   lastWriteAt: Date | null;
   queuedMetricsCount: number;
+  // Increments each time a subcheck is written to Firestore. Consumers can
+  // depend on this to refetch subcheck/checkpoint data without using
+  // continuous onSnapshot listeners.
+  subcheckWriteCount: number;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
