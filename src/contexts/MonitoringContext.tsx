@@ -312,127 +312,17 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // no-op: automatic scheduling disabled
   };
 
-  // Perform the actual sync operation
-  // ---- Local queue for watchMetrics (offline / unavailable Firestore) ----
-  const QUEUE_KEY = 'watchMetricsQueue';
-  type QueuedMetric = {
-    heartRate: number;
-    speechPercentage: number;
-    emotion: string;
-    queuedAt: number;
-  };
-
-  const readQueue = (): QueuedMetric[] => {
-    try {
-      const raw = localStorage.getItem(QUEUE_KEY);
-      return raw ? (JSON.parse(raw) as QueuedMetric[]) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeQueue = (q: QueuedMetric[]) => {
-    try {
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-      setQueuedMetricsCount(q.length);
-    } catch (e) {
-      console.error('[performSync] Failed to persist queue', e);
-    }
-  };
-
-  const enqueueMetric = (m: QueuedMetric) => {
-    const q = readQueue();
-    q.push(m);
-    // Cap at 500 to prevent unbounded growth
-    const trimmed = q.length > 500 ? q.slice(q.length - 500) : q;
-    writeQueue(trimmed);
-    console.log('[performSync] Metric queued locally', { queueSize: trimmed.length });
-  };
-
-  const flushQueue = async (currentUid: string) => {
-    const q = readQueue();
-    if (q.length === 0) return;
-    console.log('[performSync] Flushing queued metrics', { count: q.length });
-    const remaining: QueuedMetric[] = [];
-    for (let i = 0; i < q.length; i++) {
-      const m = q[i];
-      try {
-        await addDoc(collection(db, 'users', currentUid, 'watchMetrics'), {
-          heartRate: m.heartRate,
-          speechPercentage: m.speechPercentage,
-          emotion: m.emotion,
-          timestamp: serverTimestamp(),
-          queuedAt: m.queuedAt,
-        });
-      } catch (e) {
-        console.error('[performSync] Flush failed at item, keeping rest queued', e);
-        // Keep this and all subsequent items
-        remaining.push(...q.slice(i));
-        break;
-      }
-    }
-    writeQueue(remaining);
-    console.log('[performSync] Flush complete', { flushed: q.length - remaining.length, remaining: remaining.length });
-  };
-
-  const performSync = async () => {
-    console.log('[performSync] manual sync triggered', {
-      uid,
-      heartRate,
-      speechPercentage,
-      emotion: currentEmotion,
-    });
-
-    if (!uid) {
-      console.log('performSync skipped - no uid');
-      toast({
-        title: 'Sync Failed',
-        description: 'No authenticated user. Please sign in.',
-        variant: 'destructive',
-        duration: 3000,
-      });
-      setLastWriteStatus('failed');
-      setLastWriteAt(new Date());
-      return;
-    }
-
-    setSyncStatus('in-progress');
-    const path = `users/${uid}/watchMetrics`;
-
-    try {
-      const docRef = await addDoc(collection(db, 'users', uid, 'watchMetrics'), {
-        heartRate,
-        speechPercentage,
-        emotion: currentEmotion,
-        timestamp: serverTimestamp(),
-      });
-      console.log('[performSync] Firestore write SUCCESS', { uid, path, docId: docRef.id });
-      setLastWriteStatus('success');
-      setLastWriteAt(new Date());
-      setLastSyncTime(new Date());
-      setSyncStatus('success');
-      toast({
-        title: 'Synced to Firebase',
-        description: `Saved metrics at ${format(new Date(), 'h:mm:ss a')}`,
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error('[performSync] Firestore write FAILED', { uid, path, error });
-      setLastWriteStatus('failed');
-      setLastWriteAt(new Date());
-      setSyncStatus('failed');
-      toast({
-        title: 'Sync Failed',
-        description: error instanceof Error ? error.message : 'Could not write to Firebase.',
-        variant: 'destructive',
-        duration: 3000,
-      });
-    }
-  };
-
-  // Manual sync function exposed through context
+  // Manual sync is intentionally a no-op. Firestore writes are STRICTLY
+  // event-driven and happen only at:
+  //   1. Setup wizard "Next" (baseline writes — in SetupWizard)
+  //   2. Subcheck every 20 minutes (rolling aggregation timer below)
+  //   3. Heart rate deviating > 1σ from baseline (event-driven effect below)
+  //   4. isTalking state change (event-driven effect below)
+  //   5. Distress signal (event-driven effect below)
+  //   6. Profile update (in ProfileContext)
+  // Any other timed/automatic Firestore write has been removed.
   const manualSync = async () => {
-    await performSync();
+    console.log('[Sync] manualSync() called — no-op (writes are event-driven only)');
   };
 
   // Simulation effect for heart rate
