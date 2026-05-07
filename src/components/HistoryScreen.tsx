@@ -170,7 +170,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
               <ul className="space-y-1.5">
                 {items.map((c) => {
                   const isOpen = expanded === c.id;
-                  const color = EMOTION_HEX[c.dominantEmotion];
+                  const color = getEmotionColor(c.dominantEmotion);
                   const periodNotifs = notificationsForCheckpoint(c);
                   return (
                     <li
@@ -284,7 +284,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
                     className="w-full rounded-t-md transition-all"
                     style={{
                       height: `${heightPct}%`,
-                      backgroundColor: EMOTION_HEX[e.emotion],
+                      backgroundColor: getEmotionColor(e.emotion),
                     }}
                   />
                 </div>
@@ -298,7 +298,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
               <div key={e.emotion} className="flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: EMOTION_HEX[e.emotion] }}
+                  style={{ backgroundColor: getEmotionColor(e.emotion) }}
                 />
                 <span className="text-[11px] capitalize text-slate-300">{e.emotion}</span>
               </div>
