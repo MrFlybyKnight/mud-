@@ -6,7 +6,7 @@ import { detectEmergency, type EmergencyEvent } from '../utils/notificationUtils
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
 
@@ -588,7 +588,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-    const pad = (n: number) => String(n).padStart(2, '0');
+    
 
     const writeSubcheck = async () => {
       const buf = rollingBufferRef.current;
@@ -607,8 +607,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           timestamp: serverTimestamp(),
           windowStart: new Date(buf.windowStart),
           windowEnd: new Date(),
+          trigger: 'subcheck-20m',
         });
-        console.log('[Pipeline] subcheck written');
+        console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
       } catch (e) {
         console.error('[Pipeline] subcheck failed', e);
       }
@@ -629,76 +630,91 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return best;
     };
 
-    const writeCheckpoint = async () => {
-      try {
-        const q = query(
-          collection(db, 'users', uid, 'subchecks'),
-          orderBy('timestamp', 'desc'),
-          limit(3),
-        );
-        const snap = await getDocs(q);
-        if (snap.empty) {
-          console.log('[Pipeline] checkpoint skipped — no subchecks');
-          return;
-        }
-        const docs = snap.docs.map(d => d.data() as { heartRate: number; speechRate: number; speechTime: number; dominantEmotion: EmotionType });
-        const now = new Date();
-        const id = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}`;
-        await setDoc(doc(db, 'users', uid, 'checkpoints', id), {
-          heartRate: avg(docs.map(d => d.heartRate)),
-          speechRate: avg(docs.map(d => d.speechRate)),
-          speechTime: sum(docs.map(d => d.speechTime)),
-          dominantEmotion: dominant(docs.map(d => d.dominantEmotion)),
-          subcheckCount: docs.length,
-          timestamp: serverTimestamp(),
-        });
-        console.log('[Pipeline] checkpoint written', id);
-        // Cloud Function "cleanupSubchecks" handles deletion of subchecks > 40m old.
-      } catch (e) {
-        console.error('[Pipeline] checkpoint failed', e);
-      }
-    };
-
-    const writeDailySummary = async () => {
-      try {
-        const q = query(
-          collection(db, 'users', uid, 'checkpoints'),
-          orderBy('timestamp', 'desc'),
-          limit(24),
-        );
-        const snap = await getDocs(q);
-        if (snap.empty) {
-          console.log('[Pipeline] dailySummary skipped — no checkpoints');
-          return;
-        }
-        const docs = snap.docs.map(d => d.data() as { heartRate: number; speechRate: number; speechTime: number; dominantEmotion: EmotionType });
-        const now = new Date();
-        const id = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-        await setDoc(doc(db, 'users', uid, 'dailySummaries', id), {
-          heartRate: avg(docs.map(d => d.heartRate)),
-          speechRate: avg(docs.map(d => d.speechRate)),
-          speechTime: sum(docs.map(d => d.speechTime)),
-          dominantEmotion: dominant(docs.map(d => d.dominantEmotion)),
-          checkpointCount: docs.length,
-          timestamp: serverTimestamp(),
-        });
-        console.log('[Pipeline] dailySummary written', id);
-        // Cloud Function "cleanupCheckpoints" handles deletion of checkpoints > 25h old.
-      } catch (e) {
-        console.error('[Pipeline] dailySummary failed', e);
-      }
-    };
-
     const subcheckTimer = setInterval(writeSubcheck, 20 * 60 * 1000);
-    const checkpointTimer = setInterval(writeCheckpoint, 60 * 60 * 1000);
-    const dailyTimer = setInterval(writeDailySummary, 24 * 60 * 60 * 1000);
-
     return () => {
       clearInterval(subcheckTimer);
-      clearInterval(checkpointTimer);
-      clearInterval(dailyTimer);
     };
   }, [uid, isSetupComplete]);
+
+  // ---- Event-driven writes ----
+
+  // 1) Heart rate deviation > 1σ from baseline → write a distress/HR event.
+  const lastHrEventAtRef = useRef<number>(0);
+  useEffect(() => {
+    if (!uid || !isSetupComplete || !isMonitoring) return;
+    const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+    const sigma = baseline * 0.12;
+    if (Math.abs(heartRate - baseline) <= sigma) return;
+    // Throttle to at most one event per 60s to prevent runaway writes.
+    const now = Date.now();
+    if (now - lastHrEventAtRef.current < 60 * 1000) return;
+    lastHrEventAtRef.current = now;
+    (async () => {
+      try {
+        await addDoc(collection(db, 'users', uid, 'events'), {
+          type: 'hr_deviation',
+          heartRate,
+          baseline,
+          sigma,
+          delta: heartRate - baseline,
+          timestamp: serverTimestamp(),
+          trigger: 'hr-1sigma',
+        });
+        console.log('[FirestoreWrite] trigger=hr-1sigma → users/%s/events bpm=%d baseline=%d', uid, heartRate, baseline);
+      } catch (e) {
+        console.error('[FirestoreWrite] hr-1sigma failed', e);
+      }
+    })();
+  }, [uid, isSetupComplete, isMonitoring, heartRate, baselineHeartRate]);
+
+  // 2) isTalking state change → write a voice trigger event.
+  const prevTalkingRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!uid || !isSetupComplete) return;
+    if (prevTalkingRef.current === null) {
+      prevTalkingRef.current = isTalking;
+      return;
+    }
+    if (prevTalkingRef.current === isTalking) return;
+    prevTalkingRef.current = isTalking;
+    (async () => {
+      try {
+        await addDoc(collection(db, 'users', uid, 'events'), {
+          type: 'voice_state_change',
+          isTalking,
+          heartRate,
+          speechPercentage,
+          timestamp: serverTimestamp(),
+          trigger: 'voice-toggle',
+        });
+        console.log('[FirestoreWrite] trigger=voice-toggle → users/%s/events isTalking=%s', uid, isTalking);
+      } catch (e) {
+        console.error('[FirestoreWrite] voice-toggle failed', e);
+      }
+    })();
+  }, [uid, isSetupComplete, isTalking]);
+
+  // 3) Distress signal (pendingEmergency) → write a distress event.
+  useEffect(() => {
+    if (!uid || !pendingEmergency) return;
+    (async () => {
+      try {
+        await addDoc(collection(db, 'users', uid, 'events'), {
+          type: 'distress',
+          emergencyType: pendingEmergency.type,
+          heartRate,
+          speechPercentage,
+          emotion: currentEmotion,
+          timestamp: serverTimestamp(),
+          trigger: 'distress',
+        });
+        console.log('[FirestoreWrite] trigger=distress → users/%s/events type=%s', uid, pendingEmergency.type);
+      } catch (e) {
+        console.error('[FirestoreWrite] distress failed', e);
+      }
+    })();
+  }, [uid, pendingEmergency]);
+
 
 
   // Effect to detect emergency situations

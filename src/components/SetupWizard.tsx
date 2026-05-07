@@ -127,6 +127,7 @@ const SetupWizard: React.FC = () => {
         },
         { merge: true },
       );
+      console.log('[FirestoreWrite] trigger=setup-wizard-voice-baseline → users/%s', user.uid);
       setBaselineVoiceSpeed(rate);
       setBaselineVoiceTone(toneAverage);
 
@@ -182,7 +183,7 @@ const SetupWizard: React.FC = () => {
           { baselineHeartRate: calibrationValue, baselineHeartRateAt: serverTimestamp() },
           { merge: true },
         );
-        console.log('[SetupWizard] baselineHeartRate write SUCCEEDED for uid:', user.uid);
+        console.log('[FirestoreWrite] trigger=setup-wizard-next-hr → users/%s', user.uid);
         toast({ title: 'Baseline heart rate saved', description: `${calibrationValue} BPM saved to cloud.` });
         setCalibrationValue(0);
         nextSetupStep();
