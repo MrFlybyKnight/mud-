@@ -5,7 +5,7 @@ import { useMonitoring } from './MonitoringContext';
 import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, getLoquacitySuggestion, getChattyPattyNudge, sendWatchNotification } from '@/utils/notificationUtils';
 import { useProfile } from './ProfileContext';
 import { useAuth } from './AuthContext';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 
 interface NotificationContextType {
