@@ -51,7 +51,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     currentEmotion,
     emotionHistory,
     isSetupComplete,
-    isMonitoring
+    isMonitoring,
+    subcheckWriteCount,
   } = useMonitoring();
   
   const { currentProfile } = useProfile();
