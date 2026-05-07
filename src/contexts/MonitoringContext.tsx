@@ -607,8 +607,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           timestamp: serverTimestamp(),
           windowStart: new Date(buf.windowStart),
           windowEnd: new Date(),
+          trigger: 'subcheck-20m',
         });
-        console.log('[Pipeline] subcheck written');
+        console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
       } catch (e) {
         console.error('[Pipeline] subcheck failed', e);
       }
