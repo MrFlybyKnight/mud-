@@ -588,7 +588,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
     const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
-    const pad = (n: number) => String(n).padStart(2, '0');
+    
 
     const writeSubcheck = async () => {
       const buf = rollingBufferRef.current;
