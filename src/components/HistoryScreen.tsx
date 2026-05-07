@@ -13,20 +13,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
+import { getEmotionColor, ALL_EMOTIONS } from '@/utils/emotionUtils';
 import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const EMOTION_HEX: Record<EmotionType, string> = {
-  calm: '#22c55e',
-  focused: '#3b82f6',
-  anxious: '#f97316',
-  stressed: '#ef4444',
-  bored: '#a855f7',
-  excited: '#eab308',
-  neutral: '#94a3b8',
-};
-
-const EMOTION_ORDER: EmotionType[] = ['calm', 'focused', 'anxious', 'stressed', 'bored', 'excited', 'neutral'];
+const EMOTION_ORDER: EmotionType[] = ALL_EMOTIONS;
 
 interface Checkpoint {
   id: string;
@@ -179,7 +170,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
               <ul className="space-y-1.5">
                 {items.map((c) => {
                   const isOpen = expanded === c.id;
-                  const color = EMOTION_HEX[c.dominantEmotion];
+                  const color = getEmotionColor(c.dominantEmotion);
                   const periodNotifs = notificationsForCheckpoint(c);
                   return (
                     <li
@@ -293,7 +284,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
                     className="w-full rounded-t-md transition-all"
                     style={{
                       height: `${heightPct}%`,
-                      backgroundColor: EMOTION_HEX[e.emotion],
+                      backgroundColor: getEmotionColor(e.emotion),
                     }}
                   />
                 </div>
@@ -307,7 +298,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
               <div key={e.emotion} className="flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: EMOTION_HEX[e.emotion] }}
+                  style={{ backgroundColor: getEmotionColor(e.emotion) }}
                 />
                 <span className="text-[11px] capitalize text-slate-300">{e.emotion}</span>
               </div>

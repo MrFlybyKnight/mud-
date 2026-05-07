@@ -151,13 +151,22 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Emotion tracking state
   const [currentEmotion, setCurrentEmotion] = useState<EmotionType>('neutral');
   const [emotionHistory, setEmotionHistory] = useState<Record<EmotionType, number>>({
+    neutral: 0,
     calm: 0,
-    excited: 0,
-    anxious: 0,
     focused: 0,
+    excited: 0,
+    happy: 0,
+    anxious: 0,
     stressed: 0,
+    angry: 0,
+    sad: 0,
     bored: 0,
-    neutral: 0
+    overwhelmed: 0,
+    confident: 0,
+    uncomfortable: 0,
+    tired: 0,
+    surprised: 0,
+    content: 0,
   });
   
   // Emergency state

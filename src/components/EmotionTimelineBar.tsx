@@ -9,18 +9,9 @@ import {
 import { db } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
+import { getEmotionColor } from '@/utils/emotionUtils';
 import type { EmotionType } from '@/utils/emotionUtils';
 import { cn } from '@/lib/utils';
-
-const EMOTION_HEX: Record<EmotionType, string> = {
-  calm:     '#22c55e',
-  focused:  '#3b82f6',
-  anxious:  '#f97316',
-  stressed: '#ef4444',
-  bored:    '#a855f7',
-  excited:  '#eab308',
-  neutral:  '#94a3b8',
-};
 
 const MAX_SEGMENTS = 18; // 6 hours at 20-min intervals
 
@@ -104,7 +95,7 @@ const EmotionTimelineBar: React.FC<EmotionTimelineBarProps> = ({ onOpen, classNa
         <div
           key={s ? s.id : `empty-${i}`}
           className="h-full flex-1"
-          style={{ backgroundColor: s ? EMOTION_HEX[s.dominantEmotion] : 'transparent' }}
+          style={{ backgroundColor: s ? getEmotionColor(s.dominantEmotion) : 'transparent' }}
           title={s ? `${s.dominantEmotion} · ${s.timestamp.toLocaleTimeString()}` : 'No data'}
         />
       ))}

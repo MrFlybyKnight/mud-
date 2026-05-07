@@ -5,13 +5,22 @@ type Region = 'head' | 'chest' | 'stomach' | 'shoulders' | 'arms' | 'legs';
 
 // Activation intensity 0..1 per body region for each emotion.
 const ACTIVATION: Record<EmotionType, Record<Region, number>> = {
-  calm:     { head: 0.25, chest: 0.40, stomach: 0.20, shoulders: 0.15, arms: 0.15, legs: 0.10 },
-  excited:  { head: 0.85, chest: 0.95, stomach: 0.55, shoulders: 0.70, arms: 0.75, legs: 0.50 },
-  anxious:  { head: 0.70, chest: 0.80, stomach: 0.90, shoulders: 0.60, arms: 0.45, legs: 0.30 },
-  focused:  { head: 0.90, chest: 0.50, stomach: 0.30, shoulders: 0.45, arms: 0.40, legs: 0.20 },
-  stressed: { head: 0.90, chest: 0.85, stomach: 0.70, shoulders: 0.95, arms: 0.55, legs: 0.30 },
-  bored:    { head: 0.15, chest: 0.20, stomach: 0.20, shoulders: 0.15, arms: 0.10, legs: 0.10 },
-  neutral:  { head: 0.40, chest: 0.40, stomach: 0.40, shoulders: 0.40, arms: 0.35, legs: 0.30 },
+  calm:          { head: 0.25, chest: 0.40, stomach: 0.20, shoulders: 0.15, arms: 0.15, legs: 0.10 },
+  content:       { head: 0.30, chest: 0.50, stomach: 0.25, shoulders: 0.20, arms: 0.20, legs: 0.15 },
+  happy:         { head: 0.65, chest: 0.80, stomach: 0.40, shoulders: 0.55, arms: 0.55, legs: 0.40 },
+  excited:       { head: 0.85, chest: 0.95, stomach: 0.55, shoulders: 0.70, arms: 0.75, legs: 0.50 },
+  anxious:       { head: 0.70, chest: 0.80, stomach: 0.90, shoulders: 0.60, arms: 0.45, legs: 0.30 },
+  focused:       { head: 0.90, chest: 0.50, stomach: 0.30, shoulders: 0.45, arms: 0.40, legs: 0.20 },
+  confident:     { head: 0.70, chest: 0.85, stomach: 0.40, shoulders: 0.65, arms: 0.55, legs: 0.45 },
+  stressed:      { head: 0.90, chest: 0.85, stomach: 0.70, shoulders: 0.95, arms: 0.55, legs: 0.30 },
+  angry:         { head: 0.95, chest: 0.90, stomach: 0.55, shoulders: 0.85, arms: 0.85, legs: 0.40 },
+  overwhelmed:   { head: 0.95, chest: 0.95, stomach: 0.85, shoulders: 0.90, arms: 0.70, legs: 0.50 },
+  uncomfortable: { head: 0.55, chest: 0.50, stomach: 0.65, shoulders: 0.55, arms: 0.30, legs: 0.25 },
+  sad:           { head: 0.45, chest: 0.55, stomach: 0.40, shoulders: 0.30, arms: 0.20, legs: 0.20 },
+  bored:         { head: 0.15, chest: 0.20, stomach: 0.20, shoulders: 0.15, arms: 0.10, legs: 0.10 },
+  tired:         { head: 0.20, chest: 0.25, stomach: 0.20, shoulders: 0.15, arms: 0.10, legs: 0.10 },
+  surprised:     { head: 0.95, chest: 0.85, stomach: 0.50, shoulders: 0.70, arms: 0.60, legs: 0.30 },
+  neutral:       { head: 0.40, chest: 0.40, stomach: 0.40, shoulders: 0.40, arms: 0.35, legs: 0.30 },
 };
 
 // Map intensity to HSL: cool blue (low) → orange/red (high).
