@@ -1,24 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import {
   collection,
+  getDocs,
   limit,
-  onSnapshot,
   orderBy,
   query,
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMonitoring } from '@/contexts/MonitoringContext';
 import type { EmotionType } from '@/utils/emotionUtils';
 import { cn } from '@/lib/utils';
 
 const EMOTION_HEX: Record<EmotionType, string> = {
-  calm:     '#22c55e', // green
-  focused:  '#3b82f6', // blue
-  anxious:  '#f97316', // orange
-  stressed: '#ef4444', // red
-  bored:    '#a855f7', // purple
-  excited:  '#eab308', // yellow
-  neutral:  '#94a3b8', // grey
+  calm:     '#22c55e',
+  focused:  '#3b82f6',
+  anxious:  '#f97316',
+  stressed: '#ef4444',
+  bored:    '#a855f7',
+  excited:  '#eab308',
+  neutral:  '#94a3b8',
 };
 
 const MAX_SEGMENTS = 18; // 6 hours at 20-min intervals
@@ -34,23 +35,43 @@ interface EmotionTimelineBarProps {
   className?: string;
 }
 
+// Module-level session cache keyed by uid. Survives unmounts within the
+// session so re-renders never re-query Firestore.
+const subcheckCache = new Map<string, { count: number; data: Subcheck[] }>();
+
 const EmotionTimelineBar: React.FC<EmotionTimelineBarProps> = ({ onOpen, className }) => {
   const { uid } = useAuth();
-  const [subchecks, setSubchecks] = useState<Subcheck[]>([]);
+  const { subcheckWriteCount } = useMonitoring();
+  const [subchecks, setSubchecks] = useState<Subcheck[]>(() =>
+    uid ? subcheckCache.get(uid)?.data ?? [] : [],
+  );
 
   useEffect(() => {
     if (!uid) {
       setSubchecks([]);
       return;
     }
-    const q = query(
-      collection(db, 'users', uid, 'subchecks'),
-      orderBy('timestamp', 'desc'),
-      limit(MAX_SEGMENTS),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
+    // Empty-state shortcut: if no subcheck has been written this session and
+    // we have no cache, render fully grey without hitting Firestore. The bar
+    // will fetch the first time a subcheck is written (subcheckWriteCount>0).
+    const cached = subcheckCache.get(uid);
+    if (subcheckWriteCount === 0 && !cached) {
+      return;
+    }
+    // Use cached version if it matches the current write count.
+    if (cached && cached.count === subcheckWriteCount) {
+      setSubchecks(cached.data);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'subchecks'),
+          orderBy('timestamp', 'desc'),
+          limit(MAX_SEGMENTS),
+        );
+        const snap = await getDocs(q);
         const next: Subcheck[] = [];
         snap.forEach((d) => {
           const data = d.data() as { dominantEmotion?: EmotionType; timestamp?: { toDate?: () => Date } };
@@ -60,15 +81,17 @@ const EmotionTimelineBar: React.FC<EmotionTimelineBarProps> = ({ onOpen, classNa
             timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(),
           });
         });
-        setSubchecks(next);
-      },
-      (err) => console.warn('[EmotionTimelineBar] snapshot error', err),
-    );
-    return () => unsub();
-  }, [uid]);
+        subcheckCache.set(uid, { count: subcheckWriteCount, data: next });
+        if (!cancelled) setSubchecks(next);
+      } catch (err) {
+        console.warn('[EmotionTimelineBar] fetch error', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid, subcheckWriteCount]);
 
   // Build an array of MAX_SEGMENTS slots, oldest → newest, padding empties.
-  const ordered = [...subchecks].reverse(); // chronological
+  const ordered = [...subchecks].reverse();
   const padCount = Math.max(0, MAX_SEGMENTS - ordered.length);
   const slots: (Subcheck | null)[] = [
     ...Array.from({ length: padCount }, () => null),
