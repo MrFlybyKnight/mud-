@@ -94,6 +94,10 @@ interface MonitoringContextType {
   lastWriteStatus: 'success' | 'failed' | 'queued' | 'none';
   lastWriteAt: Date | null;
   queuedMetricsCount: number;
+  // Increments each time a subcheck is written to Firestore. Consumers can
+  // depend on this to refetch subcheck/checkpoint data without using
+  // continuous onSnapshot listeners.
+  subcheckWriteCount: number;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
@@ -171,6 +175,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [lastWriteStatus, setLastWriteStatus] = useState<'success' | 'failed' | 'queued' | 'none'>('none');
   const [lastWriteAt, setLastWriteAt] = useState<Date | null>(null);
   const [queuedMetricsCount, setQueuedMetricsCount] = useState<number>(0);
+  const [subcheckWriteCount, setSubcheckWriteCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rolling aggregation buffers
@@ -500,6 +505,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           trigger: 'subcheck-20m',
         });
         console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
+        // Notify subscribers (history screen, timeline bar, loquacity) that
+        // there is fresh subcheck data to fetch — replaces continuous onSnapshot listeners.
+        setSubcheckWriteCount((n) => n + 1);
       } catch (e) {
         console.error('[Pipeline] subcheck failed', e);
       }
@@ -782,6 +790,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     lastWriteStatus,
     lastWriteAt,
     queuedMetricsCount,
+    subcheckWriteCount,
   };
   
   return (

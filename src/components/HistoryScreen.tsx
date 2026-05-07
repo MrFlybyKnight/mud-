@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   collection,
+  getDocs,
   limit,
-  onSnapshot,
   orderBy,
   query,
   where,
@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
 import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
@@ -58,10 +59,17 @@ const periodOf = (d: Date): 'This Morning' | 'This Afternoon' | 'This Evening' |
   return 'This Evening';
 };
 
+// Module-level session cache keyed by uid. Avoids re-querying on remount or
+// re-render. Bumped when subcheckWriteCount advances.
+const checkpointCache = new Map<string, { count: number; data: Checkpoint[] }>();
+
 const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
   const { uid } = useAuth();
+  const { subcheckWriteCount } = useMonitoring();
   const { notifications } = useNotification();
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(() =>
+    uid ? checkpointCache.get(uid)?.data ?? [] : [],
+  );
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,16 +77,28 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
       setCheckpoints([]);
       return;
     }
-    const since = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
-    const q = query(
-      collection(db, 'users', uid, 'checkpoints'),
-      where('timestamp', '>=', since),
-      orderBy('timestamp', 'desc'),
-      limit(48),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
+    // If no subchecks have been written this session AND there is no cache,
+    // there is nothing to query — return empty immediately.
+    const cached = checkpointCache.get(uid);
+    if (subcheckWriteCount === 0 && !cached) {
+      setCheckpoints([]);
+      return;
+    }
+    if (cached && cached.count === subcheckWriteCount) {
+      setCheckpoints(cached.data);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const since = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+        const q = query(
+          collection(db, 'users', uid, 'checkpoints'),
+          where('timestamp', '>=', since),
+          orderBy('timestamp', 'desc'),
+          limit(48),
+        );
+        const snap = await getDocs(q);
         const next: Checkpoint[] = [];
         snap.forEach((d) => {
           const data = d.data() as Partial<Checkpoint> & { timestamp?: { toDate?: () => Date } };
@@ -93,12 +113,14 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
             sigmaDeviation: data.sigmaDeviation,
           });
         });
-        setCheckpoints(next);
-      },
-      (err) => console.warn('[History] snapshot error', err),
-    );
-    return () => unsub();
-  }, [uid]);
+        checkpointCache.set(uid, { count: subcheckWriteCount, data: next });
+        if (!cancelled) setCheckpoints(next);
+      } catch (err) {
+        console.warn('[History] fetch error', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid, subcheckWriteCount]);
 
   // Histogram: minutes per emotion today
   const histogram = useMemo(() => {

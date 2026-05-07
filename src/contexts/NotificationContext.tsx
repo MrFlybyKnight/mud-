@@ -5,7 +5,7 @@ import { useMonitoring } from './MonitoringContext';
 import { NotificationData, getHeartRateSuggestion, getSpeechSuggestion, getEmotionSuggestion, getWellnessSuggestion, getLoquacitySuggestion, getChattyPattyNudge, sendWatchNotification } from '@/utils/notificationUtils';
 import { useProfile } from './ProfileContext';
 import { useAuth } from './AuthContext';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 
 interface NotificationContextType {
@@ -51,7 +51,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     currentEmotion,
     emotionHistory,
     isSetupComplete,
-    isMonitoring
+    isMonitoring,
+    subcheckWriteCount,
   } = useMonitoring();
   
   const { currentProfile } = useProfile();
@@ -193,45 +194,50 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => clearInterval(checkInterval);
   }, [isSetupComplete]);
 
-  // Loquacity notifications — triggered on each new subcheck if talkRatio is sustained high.
-  // Spaced ≥20 min apart by checking lastLoquacityNotificationTime.
+  // Loquacity notifications — fire once per new subcheck. Triggered by the
+  // subcheckWriteCount bump from MonitoringContext (no continuous listener).
   useEffect(() => {
     if (!uid || !isSetupComplete || !isMonitoring) return;
-    const q = query(
-      collection(db, 'users', uid, 'subchecks'),
-      orderBy('timestamp', 'desc'),
-      limit(1),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const docSnap = snap.docs[0];
-      if (!docSnap) return;
-      // Only react to a *new* subcheck (one full sustained period)
-      if (lastLoquacitySubcheckId.current === docSnap.id) return;
-      lastLoquacitySubcheckId.current = docSnap.id;
+    if (subcheckWriteCount === 0) return; // nothing written yet
+    let cancelled = false;
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'subchecks'),
+          orderBy('timestamp', 'desc'),
+          limit(1),
+        );
+        const snap = await getDocs(q);
+        if (cancelled) return;
+        const docSnap = snap.docs[0];
+        if (!docSnap) return;
+        if (lastLoquacitySubcheckId.current === docSnap.id) return;
+        lastLoquacitySubcheckId.current = docSnap.id;
 
-      const data = docSnap.data() as { talkRatio?: number; speechRate?: number };
-      const ratio = typeof data.talkRatio === 'number' ? data.talkRatio : Math.round(data.speechRate ?? 0);
+        const data = docSnap.data() as { talkRatio?: number; speechRate?: number };
+        const ratio = typeof data.talkRatio === 'number' ? data.talkRatio : Math.round(data.speechRate ?? 0);
 
-      // Spacing guard — minimum 20 min between loquacity nudges
-      const last = lastLoquacityNotificationTime.current;
-      if (last && Date.now() - last.getTime() < 20 * 60 * 1000) return;
+        const last = lastLoquacityNotificationTime.current;
+        if (last && Date.now() - last.getTime() < 20 * 60 * 1000) return;
 
-      const notif = getLoquacitySuggestion(ratio, currentEmotionRef.current as any);
-      if (notif) {
-        processNotification(notif);
-        lastLoquacityNotificationTime.current = new Date();
+        const notif = getLoquacitySuggestion(ratio, currentEmotionRef.current as any);
+        if (notif) {
+          processNotification(notif);
+          lastLoquacityNotificationTime.current = new Date();
 
-        // At 90%+ always add the Chatty Patty second nudge, ≥5 min later.
-        if (ratio >= 90) {
-          setTimeout(() => {
-            processNotification(getChattyPattyNudge());
-          }, 5 * 60 * 1000);
+          if (ratio >= 90) {
+            setTimeout(() => {
+              processNotification(getChattyPattyNudge());
+            }, 5 * 60 * 1000);
+          }
         }
+      } catch (e) {
+        console.warn('[Loquacity] fetch failed', e);
       }
-    });
-    return () => unsub();
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, isSetupComplete, isMonitoring]);
+  }, [uid, isSetupComplete, isMonitoring, subcheckWriteCount]);
 
   // Send a test notification
   const sendTestNotification = (type: 'heart' | 'speech' | 'emotion' | 'general' = 'general') => {

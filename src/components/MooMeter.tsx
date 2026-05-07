@@ -1,7 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { Mic } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -27,28 +24,10 @@ const textFor = (ratio: number) => {
 };
 
 const MooMeter: React.FC<MooMeterProps> = ({ className }) => {
-  const { uid } = useAuth();
-  const { isMonitoring, currentEmotion } = useMonitoring();
-  const [ratio, setRatio] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!uid) return;
-    const q = query(
-      collection(db, 'users', uid, 'subchecks'),
-      orderBy('timestamp', 'desc'),
-      limit(1),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const d = snap.docs[0]?.data() as { talkRatio?: number; speechRate?: number } | undefined;
-      if (!d) {
-        setRatio(0);
-        return;
-      }
-      const r = typeof d.talkRatio === 'number' ? d.talkRatio : Math.round(d.speechRate ?? 0);
-      setRatio(r);
-    });
-    return () => unsub();
-  }, [uid]);
+  // Use the live in-memory speechPercentage from MonitoringContext instead of
+  // querying Firestore. No listener, no startup query.
+  const { isMonitoring, currentEmotion, speechPercentage } = useMonitoring();
+  const ratio = Math.round(speechPercentage ?? 0);
 
   // Hide entirely only when monitoring is paused / silent.
   if (!isMonitoring) return null;
