@@ -505,6 +505,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           trigger: 'subcheck-20m',
         });
         console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
+        // Notify subscribers (history screen, timeline bar, loquacity) that
+        // there is fresh subcheck data to fetch — replaces continuous onSnapshot listeners.
+        setSubcheckWriteCount((n) => n + 1);
       } catch (e) {
         console.error('[Pipeline] subcheck failed', e);
       }
