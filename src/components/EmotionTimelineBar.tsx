@@ -95,7 +95,7 @@ const EmotionTimelineBar: React.FC<EmotionTimelineBarProps> = ({ onOpen, classNa
         <div
           key={s ? s.id : `empty-${i}`}
           className="h-full flex-1"
-          style={{ backgroundColor: s ? EMOTION_HEX[s.dominantEmotion] : 'transparent' }}
+          style={{ backgroundColor: s ? getEmotionColor(s.dominantEmotion) : 'transparent' }}
           title={s ? `${s.dominantEmotion} · ${s.timestamp.toLocaleTimeString()}` : 'No data'}
         />
       ))}
