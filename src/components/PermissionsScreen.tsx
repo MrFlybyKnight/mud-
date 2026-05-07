@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Heart, Mic } from 'lucide-react';
+import { Heart, Mic, Lock, Loader2 } from 'lucide-react';
 import {
   requestHealthConnectPermissions,
   setSimulationMode,
@@ -105,7 +105,11 @@ const PermissionsScreen: React.FC<Props> = ({ onDone }) => {
             <div>
               <p className="font-medium">Microphone</p>
               <p className="text-sm text-muted-foreground">
-                Analyzes tone and pace of your voice. Audio is processed on-device and not recorded.
+                Analyzes tone and pace of your voice.
+              </p>
+              <p className="text-sm text-muted-foreground inline-flex items-center gap-1 mt-1">
+                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                Audio is processed on-device and not recorded.
               </p>
             </div>
           </div>
@@ -121,7 +125,11 @@ const PermissionsScreen: React.FC<Props> = ({ onDone }) => {
 
         <div className="flex flex-col gap-2">
           <Button onClick={handleGrant} disabled={busy} className="w-full">
-            {busy ? 'Requesting…' : 'Grant Permissions'}
+            {busy ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Requesting…</>
+            ) : (
+              'Grant Access'
+            )}
           </Button>
           <Button onClick={handleSkip} variant="ghost" disabled={busy} className="w-full">
             Set Up Later
