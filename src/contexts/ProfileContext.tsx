@@ -126,6 +126,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (async () => {
       try {
         await write();
+        console.log('[FirestoreWrite] trigger=profile-update → users/%s', uid);
       } catch (e1) {
         console.warn('[ProfileContext] Firestore write failed, retrying once:', e1);
         try {
