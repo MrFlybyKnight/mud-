@@ -11,7 +11,10 @@
  */
 import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import { logger } from "firebase-functions/v2";
+import Stripe from "stripe";
 
 admin.initializeApp();
 const db = admin.firestore();
