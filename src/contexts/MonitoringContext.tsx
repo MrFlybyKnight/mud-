@@ -6,7 +6,7 @@ import { detectEmergency, type EmergencyEvent } from '../utils/notificationUtils
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { useAuth } from './AuthContext';
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
 
