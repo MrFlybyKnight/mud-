@@ -2,13 +2,22 @@ import React from 'react';
 import { EmotionType } from '@/utils/emotionUtils';
 
 const EMOTION_COLOR: Record<EmotionType, { body: string; spot: string; accent: string; cheek: string }> = {
-  calm:     { body: '#B8EBC8', spot: '#6FC78F', accent: '#FFD3DE', cheek: '#FFB3C1' },
-  neutral:  { body: '#CFF1D9', spot: '#86CFA0', accent: '#FFD3DE', cheek: '#FFB3C1' },
-  focused:  { body: '#FFE791', spot: '#E5BE3F', accent: '#FFD3DE', cheek: '#FFB3C1' },
-  anxious:  { body: '#FFC489', spot: '#E08A39', accent: '#FFD3DE', cheek: '#FFB3C1' },
-  stressed: { body: '#FF9088', spot: '#C24A41', accent: '#FFC9CF', cheek: '#FF99A5' },
-  bored:    { body: '#A8CDEC', spot: '#5A8FC4', accent: '#FFD3DE', cheek: '#FFB3C1' },
-  excited:  { body: '#FFF4C7', spot: '#F0CE6A', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  neutral:       { body: '#CFF1D9', spot: '#86CFA0', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  calm:          { body: '#B8EBC8', spot: '#6FC78F', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  content:       { body: '#C5E8D6', spot: '#6FB89A', accent: '#FFE0CF', cheek: '#FFB3C1' },
+  focused:       { body: '#B7D8FB', spot: '#5A8FE0', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  confident:     { body: '#A8E0EE', spot: '#3FA8C2', accent: '#FFE0CF', cheek: '#FFB3C1' },
+  happy:         { body: '#FFE791', spot: '#E8B937', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  excited:       { body: '#FFCB8A', spot: '#E08A39', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  anxious:       { body: '#FFC489', spot: '#E0792B', accent: '#FFD3DE', cheek: '#FFB3C1' },
+  stressed:      { body: '#FF9088', spot: '#C24A41', accent: '#FFC9CF', cheek: '#FF99A5' },
+  angry:         { body: '#E85A52', spot: '#8C2018', accent: '#FFC2BE', cheek: '#C24036' },
+  overwhelmed:   { body: '#F08AB6', spot: '#B8407A', accent: '#FFD0E2', cheek: '#FF99B8' },
+  uncomfortable: { body: '#D6A48A', spot: '#8C5C42', accent: '#F2D3C0', cheek: '#D89180' },
+  sad:           { body: '#A6BBE3', spot: '#5870AE', accent: '#D8DEEC', cheek: '#9FB0CC' },
+  bored:         { body: '#C8B5DE', spot: '#7E62A8', accent: '#E2D8EE', cheek: '#B59BCB' },
+  tired:         { body: '#B6AECC', spot: '#6C6390', accent: '#D8D2E2', cheek: '#A89DBE' },
+  surprised:     { body: '#E8B8F0', spot: '#A050C8', accent: '#FFE3F8', cheek: '#FFB3DE' },
 };
 
 interface MoodCowProps {
