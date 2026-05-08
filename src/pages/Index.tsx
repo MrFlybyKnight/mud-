@@ -6,7 +6,16 @@ import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
 import PermissionsScreen, { hasGrantedMic, hasDeclinedPermissions } from '@/components/PermissionsScreen';
 import { hasGrantedPermissions as hasGrantedHealth } from '@/health/healthConnect';
-import { getUserSettings } from '@/firebase/firestore';
+
+const computePermsResolved = (): boolean => {
+  try {
+    if (hasGrantedHealth() && hasGrantedMic()) return true;
+    if (hasDeclinedPermissions()) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+};
 
 const AppContent: React.FC = () => {
   const {
@@ -35,28 +44,11 @@ const AppContent: React.FC = () => {
 
 const Index: React.FC = () => {
   const { user, loading } = useAuth();
-  const [permsResolved, setPermsResolved] = useState<boolean | null>(null);
+  const [permsResolved, setPermsResolved] = useState<boolean>(() => computePermsResolved());
 
+  // Re-evaluate synchronously when the user changes (e.g. after sign-in).
   useEffect(() => {
-    if (!user) { setPermsResolved(null); return; }
-    let cancelled = false;
-    (async () => {
-      // Skip if both already granted, or user previously declined.
-      if (hasGrantedHealth() && hasGrantedMic()) { if (!cancelled) setPermsResolved(true); return; }
-      if (hasDeclinedPermissions()) { if (!cancelled) setPermsResolved(true); return; }
-      try {
-        const settings = (await getUserSettings(user.uid)) as unknown as (Record<string, unknown> | null);
-        if (settings && settings.permissionsDeclined === true) {
-          try { localStorage.setItem('permissions.declined', '1'); } catch { /* noop */ }
-          if (!cancelled) setPermsResolved(true);
-          return;
-        }
-      } catch (e) {
-        console.warn('[Permissions] settings check failed', e);
-      }
-      if (!cancelled) setPermsResolved(false);
-    })();
-    return () => { cancelled = true; };
+    setPermsResolved(user ? computePermsResolved() : false);
   }, [user]);
 
   if (loading) {
@@ -72,14 +64,6 @@ const Index: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
         <h1 className="text-3xl font-bold">MūD</h1>
         <AuthForm />
-      </div>
-    );
-  }
-
-  if (permsResolved === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading…</p>
       </div>
     );
   }
