@@ -62,12 +62,10 @@ const APP_URL = "https://7c85c1a9-4312-4a2a-b551-8aca3608b109.lovableproject.com
 
 // Map Stripe price IDs -> plan tier. Configure these to your real price IDs.
 const PRICE_TO_PLAN: Record<string, "premium_plus" | "prestige"> = {
-  // monthly
-  "price_premium_plus_monthly": "premium_plus",
-  "price_prestige_monthly": "prestige",
-  // annual
-  "price_premium_plus_annual": "premium_plus",
-  "price_prestige_annual": "prestige",
+  "price_1TUcqhH59vC8GNiM4RaOLvBv": "premium_plus", // Premium Plus Monthly
+  "price_1TUcrxH59vC8GNiMROfPP8aj": "premium_plus", // Premium Plus Annual
+  "price_1TUcxxH59vC8GNiMWqGvKENT": "prestige",     // Prestige Monthly
+  "price_1TUd3KH59vC8GNiMijExGSTL": "prestige",     // Prestige Annual
 };
 
 function stripeClient(): Stripe {
