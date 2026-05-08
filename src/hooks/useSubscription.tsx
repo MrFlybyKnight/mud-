@@ -108,10 +108,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const hasFeature = useCallback(
     (feature: GatedFeature) => {
-      const plan = subscription?.plan ?? "free";
-      return PLAN_FEATURES[plan].has(feature);
+      // While the subscription doc is still loading, don't gate — we don't
+      // know the user's plan yet. Returning false here would briefly lock
+      // paying users out of their features on every mount.
+      if (loading) return true;
+      const plan: SubscriptionPlan = subscription?.plan ?? "free";
+      const featureSet = PLAN_FEATURES[plan] ?? PLAN_FEATURES.free;
+      return featureSet.has(feature);
     },
-    [subscription]
+    [subscription, loading]
   );
 
   const showUpgrade = useCallback((feature: GatedFeature) => {
@@ -122,11 +127,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const requireFeature = useCallback(
     (feature: GatedFeature) => {
+      // Optimistically allow access while loading to avoid a flash of the
+      // upgrade modal for premium users on app start.
+      if (loading) return true;
       if (hasFeature(feature)) return true;
       setUpgradeFeature(feature);
       return false;
     },
-    [hasFeature]
+    [hasFeature, loading]
   );
 
   const value = useMemo<SubscriptionContextValue>(
