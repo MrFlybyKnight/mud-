@@ -7,11 +7,14 @@ import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
-  const { resolveEmergency } = useMonitoring();
+  const { resolveEmergency, uid, currentEmergency } = useMonitoring();
   const { currentProfile } = useProfile();
+  const [dismissing, setDismissing] = React.useState(false);
   
   const cardClass = platformClass(platform, {
     base: "border-red-500 bg-red-50 shadow-md animate-pulse",
@@ -29,10 +32,24 @@ const EmergencyAlert = () => {
     // event-driven trigger in MonitoringContext.
   };
   
-  const handleDismiss = () => {
-    // Clear the emergency state. No additional Firestore write here —
-    // writes are strictly event-driven.
-    resolveEmergency();
+  const handleDismiss = async () => {
+    if (dismissing) return;
+    setDismissing(true);
+    try {
+      if (uid) {
+        await addDoc(collection(db, 'users', uid, 'events'), {
+          type: 'emergency_response',
+          response: 'user_confirmed_safe',
+          emergencyType: currentEmergency,
+          timestamp: serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.error('[EmergencyAlert] failed to record user_confirmed_safe', e);
+    } finally {
+      resolveEmergency();
+      setDismissing(false);
+    }
   };
 
   return (
@@ -52,7 +69,9 @@ const EmergencyAlert = () => {
             <Phone className="h-4 w-4" />
             Call Emergency Services
           </Button>
-          <Button variant="outline" onClick={handleDismiss}>I'm Fine</Button>
+          <Button variant="outline" onClick={handleDismiss} disabled={dismissing}>
+            {dismissing ? 'Dismissing…' : "I'm Fine"}
+          </Button>
         </div>
       </CardContent>
     </Card>

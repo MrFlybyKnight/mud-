@@ -625,22 +625,27 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
 
   // Effect to detect emergency situations
+  // Thresholds intentionally very high to avoid false positives during normal
+  // activity (e.g. 90 BPM is a normal elevated heart rate, not an emergency).
   useEffect(() => {
     if (!isSetupComplete || !isMonitoring) return;
-    
-    // Check for emergency conditions
-    if (heartRateStatus === 'high' && heartRate > heartRateHighThreshold + 20) {
-      if (speechStatus === 'high' && speechPercentage > speechHighThreshold + 20) {
+
+    // Require HR to be far above the user's high threshold (≈ +50 BPM) AND
+    // sustained co-occurring speech anomaly before raising any emergency.
+    const HR_EMERGENCY_DELTA = 50;
+    const SPEECH_EMERGENCY_DELTA = 35;
+    const SPEECH_ONLY_DELTA = 50;
+
+    if (heartRateStatus === 'high' && heartRate > heartRateHighThreshold + HR_EMERGENCY_DELTA) {
+      if (speechStatus === 'high' && speechPercentage > speechHighThreshold + SPEECH_EMERGENCY_DELTA) {
         setCurrentEmergency('both');
       } else {
         setCurrentEmergency('heart');
       }
-    } else if (speechStatus === 'high' && speechPercentage > speechHighThreshold + 30) {
+    } else if (speechStatus === 'high' && speechPercentage > speechHighThreshold + SPEECH_ONLY_DELTA) {
       setCurrentEmergency('speech');
     }
-    
-    // Random demo emergency trigger removed — only real event-driven triggers
-    // (heart-rate deviation > 1σ and voice activity detection) should fire.
+
     return () => {};
   }, [isSetupComplete, isMonitoring, heartRateStatus, speechStatus, heartRate, speechPercentage, heartRateHighThreshold, speechHighThreshold, currentEmergency]);
   

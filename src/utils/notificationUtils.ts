@@ -532,7 +532,11 @@ export const detectEmergency = (
   inActiveSession: boolean = false
 ): EmergencyEvent | null => {
   const threeSigmaHigh = heartRateBaseline + sigma * 3;
+  const fourSigmaHigh = heartRateBaseline + sigma * 4;
   const twoSigmaHigh = heartRateBaseline + sigma * 2;
+  // Absolute floor: regardless of sigma, never raise a critical alert below
+  // 130 BPM (90 BPM is a normal elevated rate during walking/excitement).
+  const ABSOLUTE_HR_FLOOR = 130;
   const prev = previousHeartRates[previousHeartRates.length - 2];
   const speechStopped = speechPercentage < 5;
   const now = new Date();
@@ -568,11 +572,13 @@ export const detectEmergency = (
     },
   });
 
-  // Heart attack: spike > 3σ followed by rapid drop, speech stopped
+  // Heart attack: prior reading > 4σ AND > absolute floor, then a sharp drop,
+  // AND speech has stopped. All three must coincide.
   if (
     prev !== undefined &&
-    prev > threeSigmaHigh &&
-    heartRate < prev - sigma * 1.5 &&
+    prev > fourSigmaHigh &&
+    prev > ABSOLUTE_HR_FLOOR &&
+    heartRate < prev - sigma * 2 &&
     speechStopped
   ) {
     return make(
@@ -585,8 +591,14 @@ export const detectEmergency = (
     );
   }
 
-  // Seizure: HR > 3σ + complete speech cessation
-  if (heartRate > threeSigmaHigh && speechStopped) {
+  // Seizure: HR > 3σ AND > absolute floor AND complete speech cessation
+  // AND high HR variance (rapid swings) — all must coincide.
+  if (
+    heartRate > threeSigmaHigh &&
+    heartRate > ABSOLUTE_HR_FLOOR &&
+    speechStopped &&
+    variance(previousHeartRates) > 25
+  ) {
     return make(
       'seizure',
       'critical',
@@ -597,8 +609,15 @@ export const detectEmergency = (
     );
   }
 
-  // Stroke: abrupt speech cessation mid-active-session + HR irregularity
-  if (inActiveSession && speechStopped && variance(previousHeartRates) > 15) {
+  // Stroke: requires an active session, abrupt speech cessation, HR > 3σ,
+  // above the absolute floor, AND large HR variance.
+  if (
+    inActiveSession &&
+    speechStopped &&
+    heartRate > threeSigmaHigh &&
+    heartRate > ABSOLUTE_HR_FLOOR &&
+    variance(previousHeartRates) > 25
+  ) {
     return make(
       'stroke',
       'critical',
@@ -609,12 +628,11 @@ export const detectEmergency = (
     );
   }
 
-  // Intoxication: erratic HR (>20 BPM swing) + wildly fluctuating speech
-  if (variance(previousHeartRates) > 20 && speechPercentage > 0) {
-    // crude "slurred / fluctuating" proxy: speech bouncing across thresholds
+  // Intoxication: very erratic HR (>35 BPM swing) + wildly fluctuating speech.
+  if (variance(previousHeartRates) > 35 && speechPercentage > 0) {
     const speechSwingy =
       previousHeartRates.length >= 3 &&
-      (speechPercentage < 20 || speechPercentage > 80);
+      (speechPercentage < 15 || speechPercentage > 85);
     if (speechSwingy) {
       return make(
         'intoxication',
@@ -629,11 +647,11 @@ export const detectEmergency = (
     }
   }
 
-  // Mental health onset: anxious streak > 10 + sustained HR > 2σ
+  // Mental health onset: anxious streak > 20 + sustained HR > 3σ.
   if (
     currentEmotion === 'anxious' &&
-    emotionStreak > 10 &&
-    heartRate > twoSigmaHigh
+    emotionStreak > 20 &&
+    heartRate > threeSigmaHigh
   ) {
     return make(
       'mental_health_onset',
