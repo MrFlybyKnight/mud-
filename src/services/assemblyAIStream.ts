@@ -122,7 +122,7 @@ export class AssemblyAIStream {
           const frame = drainFrame(this.buffer, this.samplesPerFrame);
           this.collected -= this.samplesPerFrame;
           if (this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(frame.buffer);
+            this.ws.send(frame.buffer as ArrayBuffer);
           }
         }
       };
