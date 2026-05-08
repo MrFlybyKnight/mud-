@@ -13,6 +13,7 @@ import { FitnessProvider } from './contexts/FitnessContext';
 import { EncryptionProvider } from './contexts/EncryptionContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { SubscriptionProvider } from './hooks/useSubscription';
+import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import UpgradeModal from './components/UpgradeModal';
 import { TrustedCircleProvider } from './contexts/TrustedCircleContext';
 import WatchNotification from './components/WatchNotification';
@@ -29,6 +30,7 @@ const App = () => {
           <PlatformProvider>
             <AuthProvider>
               <SubscriptionProvider>
+              <UserSettingsProvider>
               <ProfileProvider>
                 <ThemeFirestoreSync />
                 <MonitoringProvider>
@@ -49,6 +51,7 @@ const App = () => {
                   </TrustedCircleProvider>
                 </MonitoringProvider>
               </ProfileProvider>
+              </UserSettingsProvider>
               </SubscriptionProvider>
             </AuthProvider>
           </PlatformProvider>
