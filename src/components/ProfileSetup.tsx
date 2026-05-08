@@ -360,12 +360,12 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onExit }) => {
         <CardFooter className="flex justify-between">
           <Button
             variant="outline"
-            onClick={handleBack}
-            disabled={step === 1}
+            onClick={step === 1 && onExit ? onExit : handleBack}
+            disabled={step === 1 && !onExit}
           >
-            Back
+            {step === 1 && onExit ? 'Cancel' : 'Back'}
           </Button>
-          
+
           <Button onClick={handleNext} disabled={isSaving}>
             {step < totalSteps ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
