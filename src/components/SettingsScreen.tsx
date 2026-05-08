@@ -12,6 +12,7 @@ import { db, auth } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUserSettings, type DndMode, type TextSize } from '@/contexts/UserSettingsContext';
 
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -58,34 +59,7 @@ interface SettingsScreenProps {
   onEditProfile: () => void;
 }
 
-type DndMode = 'silent' | 'vibrate';
-type TextSize = 'normal' | 'large' | 'xlarge';
-
-interface UserSettings {
-  activeListening: boolean;
-  dnd: { enabled: boolean; start: string; end: string; mode: DndMode };
-  notifications: {
-    master: boolean;
-    wellness: boolean;
-    lowParticipation: boolean;
-    contextSuggestions: boolean;
-  };
-  textSize: TextSize;
-  dataRetentionDays: number;
-}
-
-const DEFAULTS: UserSettings = {
-  activeListening: true,
-  dnd: { enabled: false, start: '22:00', end: '07:00', mode: 'silent' },
-  notifications: {
-    master: true,
-    wellness: true,
-    lowParticipation: true,
-    contextSuggestions: true,
-  },
-  textSize: 'normal',
-  dataRetentionDays: 30,
-};
+const KNOWN_SUBCOLLECTIONS_PLACEHOLDER = null;
 
 const KNOWN_SUBCOLLECTIONS = ['subchecks', 'checkpoints', 'watchMetrics', 'assessments', 'notifications'];
 
