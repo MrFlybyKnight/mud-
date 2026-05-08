@@ -2,6 +2,9 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { determineStatus, StatusType, generateHeartRate, generateSpeechPercentage, UserActivityState, SyncStatus, getSyncInterval, getActiveSyncDuration, syncDataWithServer } from '../utils/monitoringUtils';
 import { determineEmotion, EmotionType } from '../utils/emotionUtils';
+import { trancheEmotion, type PrimarySentiment } from '../utils/trancheUtils';
+import { AssemblyAIStream } from '../services/assemblyAIStream';
+import { useSubscription } from '../hooks/useSubscription';
 import { detectEmergency, type EmergencyEvent } from '../utils/notificationUtils';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -198,7 +201,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const { toast } = useToast();
   const { uid } = useAuth();
-  
+  const { hasFeature } = useSubscription();
+  const assemblyAIEnabled = hasFeature('assemblyAI');
+
+  // AssemblyAI streaming session + most-recent primary sentiment.
+  // Sentiment is stale-checked (30s) before being applied to trancheEmotion.
+  const assemblyAIRef = useRef<AssemblyAIStream | null>(null);
+  const lastSentimentRef = useRef<{ sentiment: PrimarySentiment; at: number } | null>(null);
+
   // Derived status
   const heartRateStatus = determineStatus(heartRate, heartRateLowThreshold, heartRateHighThreshold);
   const speechStatus = determineStatus(speechPercentage, speechLowThreshold, speechHighThreshold);
@@ -412,14 +422,29 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Update emotion every 3 seconds
     const emotionInterval = setInterval(() => {
-      const newEmotion = determineEmotion(
-        heartRate,
-        speechPercentage,
-        baselineHeartRate > 0 ? baselineHeartRate : 75,
-        baselineVoiceTone,
-        baselineVoiceSpeed,
-        emotionStreakRef.current
-      );
+      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+      const recentSentiment = lastSentimentRef.current;
+      const sentimentFresh =
+        recentSentiment != null && Date.now() - recentSentiment.at < 30_000;
+
+      const newEmotion: EmotionType =
+        assemblyAIEnabled && sentimentFresh
+          ? trancheEmotion(
+              recentSentiment!.sentiment,
+              heartRate,
+              speechPercentage,
+              baseline,
+              baselineVoiceTone,
+              emotionStreakRef.current,
+            )
+          : determineEmotion(
+              heartRate,
+              speechPercentage,
+              baseline,
+              baselineVoiceTone,
+              baselineVoiceSpeed,
+              emotionStreakRef.current,
+            );
 
       // Update streak: increment on repeat, reset to 1 on change.
       if (newEmotion === lastEmotionRef.current) {
@@ -444,7 +469,6 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       buf.push(heartRate);
       if (buf.length > 5) buf.shift();
 
-      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
       const sigma = baseline * 0.12;
       const event = detectEmergency(
         heartRate,
@@ -667,6 +691,59 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Speech alerts are temporarily disabled to reduce noise while debugging Firestore writes.
   }, [heartRateStatus, speechStatus, isMonitoring, toast]);
+
+  // ---- AssemblyAI streaming lifecycle ----
+  // Activates only when (premium_plus | prestige) AND isMonitoring AND isTalking.
+  // Falls back gracefully to determineEmotion (handled in the emotion effect).
+  useEffect(() => {
+    const shouldStream = assemblyAIEnabled && isMonitoring && isTalking;
+
+    if (shouldStream) {
+      if (assemblyAIRef.current?.isActive()) return;
+      console.log('[AssemblyAI] starting stream (plan gated, isTalking=true)');
+      const stream = new AssemblyAIStream({
+        onSentiment: (sentiment, transcript) => {
+          lastSentimentRef.current = { sentiment, at: Date.now() };
+          console.log('[AssemblyAI] sentiment →', sentiment, '|', transcript.slice(0, 80));
+        },
+        onError: (err) => {
+          console.error('[AssemblyAI] stream error', err);
+          toast({
+            title: 'Speech analysis unavailable',
+            description: 'Falling back to baseline emotion detection.',
+            duration: 2500,
+          });
+        },
+        onStateChange: (s) => console.log('[AssemblyAI] state:', s),
+      });
+      assemblyAIRef.current = stream;
+      void stream.start();
+    } else {
+      if (assemblyAIRef.current) {
+        console.log('[AssemblyAI] stopping stream');
+        assemblyAIRef.current.stop();
+        assemblyAIRef.current = null;
+        lastSentimentRef.current = null;
+      }
+    }
+
+    return () => {
+      // On unmount or dep change requiring shutdown, ensure cleanup.
+      if (!shouldStream && assemblyAIRef.current) {
+        assemblyAIRef.current.stop();
+        assemblyAIRef.current = null;
+      }
+    };
+  }, [assemblyAIEnabled, isMonitoring, isTalking, toast]);
+
+  // Final teardown safety net.
+  useEffect(() => {
+    return () => {
+      assemblyAIRef.current?.stop();
+      assemblyAIRef.current = null;
+    };
+  }, []);
+
   
   const toggleMonitoring = () => {
     setIsMonitoring(prev => {
