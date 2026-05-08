@@ -145,7 +145,7 @@ const Dashboard: React.FC = () => {
           <SettingsScreen
             onClose={() => setSettingsOpen(false)}
             onOpenTrusted={() => { setSettingsOpen(false); if (!trustedActive) toggleTrusted(); }}
-            onEditProfile={() => { /* profile editing handled elsewhere */ }}
+            onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
           />
         ) : (
           <>
