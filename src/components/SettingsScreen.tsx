@@ -320,7 +320,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
               icon={Activity}
               label="Active Listening"
               description="Mic and HR analysis run in the background"
-              right={<Switch checked={isMonitoring} onCheckedChange={toggleMonitoring} />}
+              right={
+                <Switch
+                  checked={isMonitoring}
+                  onCheckedChange={(v) => {
+                    if (v !== isMonitoring) toggleMonitoring();
+                    persist({ ...settings, activeListening: v });
+                  }}
+                />
+              }
             />
             <Row
               icon={MoonStar}
