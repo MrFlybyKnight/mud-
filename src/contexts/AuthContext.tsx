@@ -10,6 +10,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  onIdTokenChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -18,6 +19,27 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "@/firebase/config";
+
+/**
+ * Network/auth errors that indicate the refresh endpoint is unreachable
+ * (e.g. ERR_NAME_NOT_RESOLVED on securetoken.googleapis.com in sandboxed
+ * preview environments) vs. errors that mean the session is truly invalid.
+ */
+const NETWORK_ERROR_CODES = new Set([
+  "auth/network-request-failed",
+  "auth/timeout",
+  "auth/internal-error",
+]);
+
+const INVALID_SESSION_CODES = new Set([
+  "auth/user-token-expired",
+  "auth/user-disabled",
+  "auth/user-not-found",
+  "auth/invalid-user-token",
+  "auth/requires-recent-login",
+  "auth/id-token-expired",
+  "auth/id-token-revoked",
+]);
 
 interface AuthContextValue {
   user: User | null;
