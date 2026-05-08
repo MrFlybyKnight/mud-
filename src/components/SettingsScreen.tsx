@@ -5,13 +5,14 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
+  
 } from 'firebase/firestore';
 import { updateEmail } from 'firebase/auth';
 import { db, auth } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUserSettings, type DndMode, type TextSize } from '@/contexts/UserSettingsContext';
 
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -58,34 +59,7 @@ interface SettingsScreenProps {
   onEditProfile: () => void;
 }
 
-type DndMode = 'silent' | 'vibrate';
-type TextSize = 'normal' | 'large' | 'xlarge';
-
-interface UserSettings {
-  activeListening: boolean;
-  dnd: { enabled: boolean; start: string; end: string; mode: DndMode };
-  notifications: {
-    master: boolean;
-    wellness: boolean;
-    lowParticipation: boolean;
-    contextSuggestions: boolean;
-  };
-  textSize: TextSize;
-  dataRetentionDays: number;
-}
-
-const DEFAULTS: UserSettings = {
-  activeListening: true,
-  dnd: { enabled: false, start: '22:00', end: '07:00', mode: 'silent' },
-  notifications: {
-    master: true,
-    wellness: true,
-    lowParticipation: true,
-    contextSuggestions: true,
-  },
-  textSize: 'normal',
-  dataRetentionDays: 30,
-};
+const KNOWN_SUBCOLLECTIONS_PLACEHOLDER = null;
 
 const KNOWN_SUBCOLLECTIONS = ['subchecks', 'checkpoints', 'watchMetrics', 'assessments', 'notifications'];
 
@@ -142,7 +116,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   const [trustedManagerOpen, setTrustedManagerOpen] = useState(false);
   const { toast } = useToast();
 
-  const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
+  const { settings, updateSettings } = useUserSettings();
+  type UserSettings = typeof settings;
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [recalibrateOpen, setRecalibrateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -150,22 +125,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
-
-  // Load settings
-  useEffect(() => {
-    if (!uid) return;
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'users', uid, 'settings', 'preferences'));
-        if (snap.exists()) {
-          const data = snap.data() as Partial<UserSettings>;
-          setSettings((s) => ({ ...s, ...data, dnd: { ...s.dnd, ...(data.dnd || {}) }, notifications: { ...s.notifications, ...(data.notifications || {}) } }));
-        }
-      } catch (e) {
-        console.warn('[Settings] load failed', e);
-      }
-    })();
-  }, [uid]);
 
   // Apply text size globally
   useEffect(() => {
@@ -175,10 +134,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   }, [settings.textSize]);
 
   const persist = async (next: UserSettings) => {
-    setSettings(next);
-    if (!uid) return;
     try {
-      await setDoc(doc(db, 'users', uid, 'settings', 'preferences'), next, { merge: true });
+      await updateSettings(() => next);
     } catch (e) {
       console.error('[Settings] save failed', e);
       toast({ title: 'Could not save setting', variant: 'destructive' });
