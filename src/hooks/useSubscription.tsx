@@ -84,26 +84,51 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     const ref = doc(db, subscriptionDocPath(uid));
-    const unsub = onSnapshot(ref, async (snap) => {
-      if (snap.exists()) {
-        setSubscription(snap.data() as SubscriptionDoc);
-      } else {
-        // Initialize free plan for new users
-        const initial: SubscriptionDoc = {
-          plan: "free",
-          status: "active",
-          renewsAt: null,
-        };
-        try {
-          await setDoc(ref, { ...initial, updatedAt: serverTimestamp() });
-        } catch (err) {
-          console.warn("[subscription] failed to seed free plan", err);
-        }
-        setSubscription(initial);
-      }
+    const freeDefault: SubscriptionDoc = {
+      plan: "free",
+      status: "active",
+      renewsAt: null,
+    };
+
+    let resolved = false;
+    const resolve = (data: SubscriptionDoc) => {
+      resolved = true;
+      setSubscription(data);
       setLoading(false);
-    });
-    return () => unsub();
+    };
+
+    // 3s timeout — fall back to free tier so UI never stays in skeleton forever
+    const timeoutId = window.setTimeout(() => {
+      if (!resolved) {
+        console.warn("[subscription] Firestore read timed out after 3s — defaulting to free tier");
+        resolve(freeDefault);
+      }
+    }, 3000);
+
+    const unsub = onSnapshot(
+      ref,
+      async (snap) => {
+        if (snap.exists()) {
+          resolve(snap.data() as SubscriptionDoc);
+        } else {
+          // Document doesn't exist — render free tier immediately, seed in background
+          resolve(freeDefault);
+          try {
+            await setDoc(ref, { ...freeDefault, updatedAt: serverTimestamp() });
+          } catch (err) {
+            console.warn("[subscription] failed to seed free plan", err);
+          }
+        }
+      },
+      (err) => {
+        console.error("[subscription] snapshot error — defaulting to free tier", err);
+        resolve(freeDefault);
+      }
+    );
+    return () => {
+      window.clearTimeout(timeoutId);
+      unsub();
+    };
   }, [uid]);
 
   const hasFeature = useCallback(
