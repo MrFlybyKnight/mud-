@@ -116,7 +116,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   const [trustedManagerOpen, setTrustedManagerOpen] = useState(false);
   const { toast } = useToast();
 
-  const [settings, setSettings] = useState<UserSettings>(DEFAULTS);
+  const { settings, updateSettings } = useUserSettings();
+  type UserSettings = typeof settings;
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [recalibrateOpen, setRecalibrateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -124,22 +125,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
-
-  // Load settings
-  useEffect(() => {
-    if (!uid) return;
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'users', uid, 'settings', 'preferences'));
-        if (snap.exists()) {
-          const data = snap.data() as Partial<UserSettings>;
-          setSettings((s) => ({ ...s, ...data, dnd: { ...s.dnd, ...(data.dnd || {}) }, notifications: { ...s.notifications, ...(data.notifications || {}) } }));
-        }
-      } catch (e) {
-        console.warn('[Settings] load failed', e);
-      }
-    })();
-  }, [uid]);
 
   // Apply text size globally
   useEffect(() => {
@@ -149,10 +134,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   }, [settings.textSize]);
 
   const persist = async (next: UserSettings) => {
-    setSettings(next);
-    if (!uid) return;
     try {
-      await setDoc(doc(db, 'users', uid, 'settings', 'preferences'), next, { merge: true });
+      await updateSettings(() => next);
     } catch (e) {
       console.error('[Settings] save failed', e);
       toast({ title: 'Could not save setting', variant: 'destructive' });
