@@ -18,19 +18,7 @@ const computePermsResolved = (): boolean => {
 };
 
 const AppContent: React.FC = () => {
-  const {
-    isSetupComplete,
-    isSetupHydrating,
-    isMonitoring,
-    toggleMonitoring,
-  } = useMonitoring();
-
-  useEffect(() => {
-    if (isSetupHydrating) return;
-    if (!isMonitoring && isSetupComplete) {
-      toggleMonitoring();
-    }
-  }, [isSetupComplete, isSetupHydrating, isMonitoring, toggleMonitoring]);
+  const { isSetupComplete } = useMonitoring();
 
   return (
     <div className="min-h-screen bg-background">
