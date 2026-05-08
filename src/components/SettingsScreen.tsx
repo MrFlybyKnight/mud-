@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
 
 import TrustedCircleManager from './TrustedCircleManager';
+import SubscriptionSection from './SubscriptionSection';
 
 interface SettingsScreenProps {
   onClose: () => void;
@@ -311,6 +312,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
             <Row icon={LogOut} label="Sign Out" destructive onClick={() => setSignOutOpen(true)} />
           </Card>
         </section>
+
+        <SubscriptionSection />
 
         {/* Monitoring */}
         <section>
