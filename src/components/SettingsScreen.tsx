@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   collection,
   deleteDoc,
@@ -7,7 +7,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { updateEmail } from 'firebase/auth';
-import { db, auth } from '@/firebase/config';
+import { db } from '@/firebase/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -50,15 +50,11 @@ import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
 
 import TrustedCircleManager from './TrustedCircleManager';
-const SubscriptionSection = lazy(() => import('./SubscriptionSection'));
+import SubscriptionSection from './SubscriptionSection';
 
 interface SettingsScreenProps {
-  onClose: () => void;
-  onOpenTrusted: () => void;
   onEditProfile: () => void;
 }
-
-const KNOWN_SUBCOLLECTIONS_PLACEHOLDER = null;
 
 const KNOWN_SUBCOLLECTIONS = ['subchecks', 'checkpoints', 'watchMetrics', 'assessments', 'notifications'];
 
@@ -108,34 +104,7 @@ const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const SkeletonCard: React.FC<{ rows?: number }> = ({ rows = 3 }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden divide-y divide-slate-800/70 animate-pulse">
-    {Array.from({ length: rows }).map((_, i) => (
-      <div key={i} className="flex items-center gap-3 px-3 py-3">
-        <div className="h-4 w-4 rounded bg-slate-800 shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <div className="h-3 w-1/3 bg-slate-800 rounded" />
-          <div className="h-2.5 w-1/2 bg-slate-800/70 rounded" />
-        </div>
-        <div className="h-5 w-10 rounded-full bg-slate-800" />
-      </div>
-    ))}
-  </div>
-);
-
-const ShellBody: React.FC<{ version: string }> = ({ version }) => (
-  <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 pb-2">
-    <section><SectionHeader>Account</SectionHeader><SkeletonCard rows={3} /></section>
-    <section><SectionHeader>Subscription</SectionHeader><SkeletonCard rows={3} /></section>
-    <section><SectionHeader>Monitoring</SectionHeader><SkeletonCard rows={3} /></section>
-    <section><SectionHeader>Notifications</SectionHeader><SkeletonCard rows={4} /></section>
-    <section><SectionHeader>Trusted Circle</SectionHeader><SkeletonCard rows={1} /></section>
-    <section><SectionHeader>Privacy & Data</SectionHeader><SkeletonCard rows={3} /></section>
-    <section><SectionHeader>App</SectionHeader><SkeletonCard rows={3} /></section>
-  </div>
-);
-
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOpenTrusted: _onOpenTrusted, onEditProfile }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const { uid, user, logout } = useAuth();
   const { isMonitoring, toggleMonitoring, startSetup } = useMonitoring();
   const { theme, toggleTheme } = useTheme();
@@ -151,19 +120,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  // Defer heavy content until after first paint so the shell appears instantly.
-  useEffect(() => {
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setReady(true));
-    });
-    return () => {
-      cancelAnimationFrame(raf1);
-      if (raf2) cancelAnimationFrame(raf2);
-    };
-  }, []);
 
   // Apply text size globally
   useEffect(() => {
@@ -286,18 +242,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
     return <TrustedCircleManager onBack={() => setTrustedManagerOpen(false)} />;
   }
 
-  if (!ready) {
-    return (
-      <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
-        <header className="flex items-center justify-between shrink-0">
-          <h1 className="text-base font-semibold">Settings</h1>
-          <span className="text-[11px] text-slate-400">v{version}</span>
-        </header>
-        <ShellBody version={version} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
       <header className="flex items-center justify-between shrink-0">
@@ -321,9 +265,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
           </Card>
         </section>
 
-        <Suspense fallback={<section><SectionHeader>Subscription</SectionHeader><SkeletonCard rows={3} /></section>}>
-          <SubscriptionSection />
-        </Suspense>
+        <SubscriptionSection />
 
         {/* Monitoring */}
         <section>
