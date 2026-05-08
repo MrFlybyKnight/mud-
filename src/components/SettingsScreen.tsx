@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   collection,
   deleteDoc,
@@ -120,6 +120,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
+  const activeListeningLockRef = useRef<number>(0);
 
   // Apply text size globally
   useEffect(() => {
@@ -279,6 +280,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
                 <Switch
                   checked={isMonitoring}
                   onCheckedChange={(v) => {
+                    const now = Date.now();
+                    if (now - activeListeningLockRef.current < 500) {
+                      console.log('[Settings] Active Listening toggle ignored (debounced)');
+                      return;
+                    }
+                    activeListeningLockRef.current = now;
                     console.log('[Settings] Active Listening toggle tapped. before:', { isMonitoring, activeListening: settings.activeListening }, 'requested:', v);
                     if (v !== isMonitoring) {
                       toggleMonitoring();
