@@ -7,6 +7,8 @@ import { usePlatformContext } from '@/contexts/PlatformContext';
 import { platformClass } from '@/utils/platformUtils';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
