@@ -86,6 +86,7 @@ const Dashboard: React.FC = () => {
 
   if (!isSetupComplete) return <SetupWizard />;
   if (!isProfileComplete) return <ProfileSetup />;
+  if (editingProfile) return <ProfileSetup onExit={() => setEditingProfile(false)} />;
 
   const status = !isMonitoring ? 'Paused' : isTalking ? 'Active' : 'Silent';
   const statusColor =
