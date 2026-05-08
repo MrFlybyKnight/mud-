@@ -63,11 +63,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsubAuth = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
     });
-    return () => unsub();
+
+    // Token refresh listener: fires when ID token changes OR fails to refresh.
+    const unsubToken = onIdTokenChanged(auth, async (u) => {
+      if (!u) return;
+      try {
+        // Force a refresh to detect expired/revoked tokens early.
+        await u.getIdToken(false);
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code ?? "";
+        console.warn("[Auth] token refresh failed", code, err);
+
+        if (NETWORK_ERROR_CODES.has(code)) {
+          // Transient — keep the user signed in; Firebase SDK will retry.
+          // Schedule a retry attempt shortly.
+          setTimeout(() => {
+            u.getIdToken(true).catch((e) =>
+              console.warn("[Auth] retry refresh failed", e)
+            );
+          }, 5000);
+          return;
+        }
+
+        if (INVALID_SESSION_CODES.has(code)) {
+          // Session is genuinely invalid — sign out cleanly so UI returns to login.
+          try {
+            await signOut(auth);
+          } catch (e) {
+            console.warn("[Auth] forced signOut failed", e);
+            setUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Unknown error: try one forced refresh; if still failing, sign out.
+        try {
+          await u.getIdToken(true);
+        } catch {
+          try {
+            await signOut(auth);
+          } catch {
+            setUser(null);
+            setLoading(false);
+          }
+        }
+      }
+    });
+
+    // Periodic background check (every 10 min) to surface refresh failures
+    // before the next Firestore read does.
+    const interval = window.setInterval(() => {
+      const current = auth.currentUser;
+      if (!current) return;
+      current.getIdToken(false).catch((err) => {
+        console.warn("[Auth] periodic token check failed", err);
+      });
+    }, 10 * 60 * 1000);
+
+    return () => {
+      unsubAuth();
+      unsubToken();
+      window.clearInterval(interval);
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
