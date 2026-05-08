@@ -69,7 +69,9 @@ const EmergencyAlert = () => {
             <Phone className="h-4 w-4" />
             Call Emergency Services
           </Button>
-          <Button variant="outline" onClick={handleDismiss}>I'm Fine</Button>
+          <Button variant="outline" onClick={handleDismiss} disabled={dismissing}>
+            {dismissing ? 'Dismissing…' : "I'm Fine"}
+          </Button>
         </div>
       </CardContent>
     </Card>
