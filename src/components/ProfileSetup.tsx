@@ -22,7 +22,11 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { ArrowRight, UserRound } from 'lucide-react';
 
-const ProfileSetup: React.FC = () => {
+interface ProfileSetupProps {
+  onExit?: () => void;
+}
+
+const ProfileSetup: React.FC<ProfileSetupProps> = ({ onExit }) => {
   const { currentProfile, updateProfile } = useProfile();
   const { baselineHeartRate, baselineVoiceSpeed, completeSetup, isSetupComplete } = useMonitoring();
   const { user } = useAuth();
@@ -133,6 +137,9 @@ const ProfileSetup: React.FC = () => {
     } else {
       console.log('Navigating to dashboard');
     }
+
+    // If we were re-editing an existing profile, return to the dashboard.
+    onExit?.();
 
     // Signal Dashboard to show its "Setting up your profile..." indicator.
     window.dispatchEvent(new CustomEvent('profile-save-start'));
@@ -353,12 +360,12 @@ const ProfileSetup: React.FC = () => {
         <CardFooter className="flex justify-between">
           <Button
             variant="outline"
-            onClick={handleBack}
-            disabled={step === 1}
+            onClick={step === 1 && onExit ? onExit : handleBack}
+            disabled={step === 1 && !onExit}
           >
-            Back
+            {step === 1 && onExit ? 'Cancel' : 'Back'}
           </Button>
-          
+
           <Button onClick={handleNext} disabled={isSaving}>
             {step < totalSteps ? (
               <>Next <ArrowRight className="ml-2 h-4 w-4" /></>

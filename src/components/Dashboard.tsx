@@ -33,6 +33,7 @@ const Dashboard: React.FC = () => {
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
 
 
@@ -85,6 +86,7 @@ const Dashboard: React.FC = () => {
 
   if (!isSetupComplete) return <SetupWizard />;
   if (!isProfileComplete) return <ProfileSetup />;
+  if (editingProfile) return <ProfileSetup onExit={() => setEditingProfile(false)} />;
 
   const status = !isMonitoring ? 'Paused' : isTalking ? 'Active' : 'Silent';
   const statusColor =
@@ -143,7 +145,7 @@ const Dashboard: React.FC = () => {
           <SettingsScreen
             onClose={() => setSettingsOpen(false)}
             onOpenTrusted={() => { setSettingsOpen(false); if (!trustedActive) toggleTrusted(); }}
-            onEditProfile={() => { /* profile editing handled elsewhere */ }}
+            onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
           />
         ) : (
           <>
