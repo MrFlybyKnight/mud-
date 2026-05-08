@@ -469,7 +469,6 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       buf.push(heartRate);
       if (buf.length > 5) buf.shift();
 
-      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
       const sigma = baseline * 0.12;
       const event = detectEmergency(
         heartRate,
