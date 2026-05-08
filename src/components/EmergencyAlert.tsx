@@ -32,10 +32,24 @@ const EmergencyAlert = () => {
     // event-driven trigger in MonitoringContext.
   };
   
-  const handleDismiss = () => {
-    // Clear the emergency state. No additional Firestore write here —
-    // writes are strictly event-driven.
-    resolveEmergency();
+  const handleDismiss = async () => {
+    if (dismissing) return;
+    setDismissing(true);
+    try {
+      if (uid) {
+        await addDoc(collection(db, 'users', uid, 'events'), {
+          type: 'emergency_response',
+          response: 'user_confirmed_safe',
+          emergencyType: currentEmergency,
+          timestamp: serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.error('[EmergencyAlert] failed to record user_confirmed_safe', e);
+    } finally {
+      resolveEmergency();
+      setDismissing(false);
+    }
   };
 
   return (
