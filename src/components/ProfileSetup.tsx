@@ -22,7 +22,11 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { ArrowRight, UserRound } from 'lucide-react';
 
-const ProfileSetup: React.FC = () => {
+interface ProfileSetupProps {
+  onExit?: () => void;
+}
+
+const ProfileSetup: React.FC<ProfileSetupProps> = ({ onExit }) => {
   const { currentProfile, updateProfile } = useProfile();
   const { baselineHeartRate, baselineVoiceSpeed, completeSetup, isSetupComplete } = useMonitoring();
   const { user } = useAuth();
