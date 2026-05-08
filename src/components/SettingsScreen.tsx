@@ -120,6 +120,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
+  const activeListeningLockRef = useRef<number>(0);
 
   // Apply text size globally
   useEffect(() => {
