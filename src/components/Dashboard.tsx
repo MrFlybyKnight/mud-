@@ -14,7 +14,6 @@ import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SettingsScreen from './SettingsScreen';
-import SettingsErrorBoundary from './SettingsErrorBoundary';
 
 const Dashboard: React.FC = () => {
   const {
@@ -140,11 +139,9 @@ const Dashboard: React.FC = () => {
         {historyOpen ? (
           <HistoryScreen onBack={() => setHistoryOpen(false)} />
         ) : settingsOpen ? (
-          <SettingsErrorBoundary>
-            <SettingsScreen
-              onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
-            />
-          </SettingsErrorBoundary>
+          <SettingsScreen
+            onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
+          />
         ) : (
           <>
             {/* Hero: emotion + cow + trusted circle overlay */}
