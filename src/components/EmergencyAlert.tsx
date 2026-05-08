@@ -10,8 +10,9 @@ import { useProfile } from '@/contexts/ProfileContext';
 
 const EmergencyAlert = () => {
   const { platform } = usePlatformContext();
-  const { resolveEmergency } = useMonitoring();
+  const { resolveEmergency, uid, currentEmergency } = useMonitoring();
   const { currentProfile } = useProfile();
+  const [dismissing, setDismissing] = React.useState(false);
   
   const cardClass = platformClass(platform, {
     base: "border-red-500 bg-red-50 shadow-md animate-pulse",
