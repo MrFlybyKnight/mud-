@@ -201,7 +201,14 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const { toast } = useToast();
   const { uid } = useAuth();
-  
+  const { hasFeature } = useSubscription();
+  const assemblyAIEnabled = hasFeature('assemblyAI');
+
+  // AssemblyAI streaming session + most-recent primary sentiment.
+  // Sentiment is stale-checked (30s) before being applied to trancheEmotion.
+  const assemblyAIRef = useRef<AssemblyAIStream | null>(null);
+  const lastSentimentRef = useRef<{ sentiment: PrimarySentiment; at: number } | null>(null);
+
   // Derived status
   const heartRateStatus = determineStatus(heartRate, heartRateLowThreshold, heartRateHighThreshold);
   const speechStatus = determineStatus(speechPercentage, speechLowThreshold, speechHighThreshold);
