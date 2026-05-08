@@ -5,7 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
-  setDoc,
+  
 } from 'firebase/firestore';
 import { updateEmail } from 'firebase/auth';
 import { db, auth } from '@/firebase/config';
