@@ -70,65 +70,68 @@ interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
 
+const SUBSCRIPTION_CACHE_KEY = (uid: string) => `mud:subscription:${uid}`;
+
+const FREE_DEFAULT: SubscriptionDoc = {
+  plan: "free",
+  status: "active",
+  renewsAt: null,
+};
+
+const readCachedSubscription = (uid: string | null): SubscriptionDoc => {
+  if (!uid || typeof window === "undefined") return FREE_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(SUBSCRIPTION_CACHE_KEY(uid));
+    if (!raw) return FREE_DEFAULT;
+    const parsed = JSON.parse(raw) as SubscriptionDoc;
+    return parsed?.plan ? parsed : FREE_DEFAULT;
+  } catch {
+    return FREE_DEFAULT;
+  }
+};
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { uid } = useAuth();
-  const [subscription, setSubscription] = useState<SubscriptionDoc | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Start with a synchronous default (cached or free) so consumers never wait.
+  const [subscription, setSubscription] = useState<SubscriptionDoc>(() => readCachedSubscription(uid));
   const [upgradeFeature, setUpgradeFeature] = useState<GatedFeature | null>(null);
+  // `loading` is kept for API compatibility but is always false — UI renders immediately.
+  const loading = false;
 
   useEffect(() => {
     if (!uid) {
-      setSubscription(null);
-      setLoading(false);
+      setSubscription(FREE_DEFAULT);
       return;
     }
-    setLoading(true);
+    // Hydrate immediately from cache, then update in the background from Firestore.
+    setSubscription(readCachedSubscription(uid));
+
     const ref = doc(db, subscriptionDocPath(uid));
-    const freeDefault: SubscriptionDoc = {
-      plan: "free",
-      status: "active",
-      renewsAt: null,
-    };
-
-    let resolved = false;
-    const resolve = (data: SubscriptionDoc) => {
-      resolved = true;
-      setSubscription(data);
-      setLoading(false);
-    };
-
-    // 3s timeout — fall back to free tier so UI never stays in skeleton forever
-    const timeoutId = window.setTimeout(() => {
-      if (!resolved) {
-        console.warn("[subscription] Firestore read timed out after 3s — defaulting to free tier");
-        resolve(freeDefault);
-      }
-    }, 3000);
-
     const unsub = onSnapshot(
       ref,
       async (snap) => {
         if (snap.exists()) {
-          resolve(snap.data() as SubscriptionDoc);
-        } else {
-          // Document doesn't exist — render free tier immediately, seed in background
-          resolve(freeDefault);
+          const data = snap.data() as SubscriptionDoc;
+          setSubscription(data);
           try {
-            await setDoc(ref, { ...freeDefault, updatedAt: serverTimestamp() });
+            window.localStorage.setItem(SUBSCRIPTION_CACHE_KEY(uid), JSON.stringify(data));
+          } catch {
+            /* ignore quota errors */
+          }
+        } else {
+          setSubscription(FREE_DEFAULT);
+          try {
+            await setDoc(ref, { ...FREE_DEFAULT, updatedAt: serverTimestamp() });
           } catch (err) {
             console.warn("[subscription] failed to seed free plan", err);
           }
         }
       },
       (err) => {
-        console.error("[subscription] snapshot error — defaulting to free tier", err);
-        resolve(freeDefault);
+        console.error("[subscription] snapshot error — keeping cached/free tier", err);
       }
     );
-    return () => {
-      window.clearTimeout(timeoutId);
-      unsub();
-    };
+    return () => unsub();
   }, [uid]);
 
   const hasFeature = useCallback(
