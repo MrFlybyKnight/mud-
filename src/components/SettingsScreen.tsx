@@ -313,6 +313,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
           </Card>
         </section>
 
+        <SubscriptionSection />
+
         {/* Monitoring */}
         <section>
           <SectionHeader>Monitoring</SectionHeader>
