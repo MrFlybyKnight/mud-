@@ -372,4 +372,10 @@ const SubscriptionSectionInner: React.FC = () => {
   );
 };
 
+const SubscriptionSection: React.FC = () => (
+  <SubscriptionErrorBoundary>
+    <SubscriptionSectionInner />
+  </SubscriptionErrorBoundary>
+);
+
 export default SubscriptionSection;
