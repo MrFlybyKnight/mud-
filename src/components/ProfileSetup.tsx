@@ -138,6 +138,9 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({ onExit }) => {
       console.log('Navigating to dashboard');
     }
 
+    // If we were re-editing an existing profile, return to the dashboard.
+    onExit?.();
+
     // Signal Dashboard to show its "Setting up your profile..." indicator.
     window.dispatchEvent(new CustomEvent('profile-save-start'));
 
