@@ -422,14 +422,29 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Update emotion every 3 seconds
     const emotionInterval = setInterval(() => {
-      const newEmotion = determineEmotion(
-        heartRate,
-        speechPercentage,
-        baselineHeartRate > 0 ? baselineHeartRate : 75,
-        baselineVoiceTone,
-        baselineVoiceSpeed,
-        emotionStreakRef.current
-      );
+      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+      const recentSentiment = lastSentimentRef.current;
+      const sentimentFresh =
+        recentSentiment != null && Date.now() - recentSentiment.at < 30_000;
+
+      const newEmotion: EmotionType =
+        assemblyAIEnabled && sentimentFresh
+          ? trancheEmotion(
+              recentSentiment!.sentiment,
+              heartRate,
+              speechPercentage,
+              baseline,
+              baselineVoiceTone,
+              emotionStreakRef.current,
+            )
+          : determineEmotion(
+              heartRate,
+              speechPercentage,
+              baseline,
+              baselineVoiceTone,
+              baselineVoiceSpeed,
+              emotionStreakRef.current,
+            );
 
       // Update streak: increment on repeat, reset to 1 on change.
       if (newEmotion === lastEmotionRef.current) {
