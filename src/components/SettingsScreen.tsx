@@ -280,6 +280,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
                 <Switch
                   checked={isMonitoring}
                   onCheckedChange={(v) => {
+                    const now = Date.now();
+                    if (now - activeListeningLockRef.current < 500) {
+                      console.log('[Settings] Active Listening toggle ignored (debounced)');
+                      return;
+                    }
+                    activeListeningLockRef.current = now;
                     console.log('[Settings] Active Listening toggle tapped. before:', { isMonitoring, activeListening: settings.activeListening }, 'requested:', v);
                     if (v !== isMonitoring) {
                       toggleMonitoring();
