@@ -321,7 +321,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
           </Card>
         </section>
 
-        <SubscriptionSection />
+        <Suspense fallback={<section><SectionHeader>Subscription</SectionHeader><SkeletonCard rows={3} /></section>}>
+          <SubscriptionSection />
+        </Suspense>
 
         {/* Monitoring */}
         <section>
