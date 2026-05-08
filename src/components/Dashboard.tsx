@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import SetupWizard from './SetupWizard';
@@ -13,48 +13,8 @@ import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const SettingsScreen = lazy(() => import('./SettingsScreen'));
-
-const SETTINGS_SHELL_SECTIONS = [
-  ['Account', 3],
-  ['Subscription', 3],
-  ['Monitoring', 3],
-  ['Notifications', 4],
-  ['Trusted Circle', 1],
-  ['Privacy & Data', 3],
-  ['App', 3],
-] as const;
-
-const SettingsInstantShell: React.FC = () => (
-  <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
-    <header className="flex items-center justify-between shrink-0">
-      <h1 className="text-base font-semibold text-slate-50">Settings</h1>
-    </header>
-
-    <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 pb-2">
-      {SETTINGS_SHELL_SECTIONS.map(([title, rows]) => (
-        <section key={title}>
-          <h2 className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-            {title}
-          </h2>
-          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40 divide-y divide-slate-800/70 animate-pulse">
-            {Array.from({ length: rows }).map((_, index) => (
-              <div key={index} className="flex items-center gap-3 px-3 py-3">
-                <div className="h-4 w-4 shrink-0 rounded bg-slate-800" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-1/3 rounded bg-slate-800" />
-                  <div className="h-2.5 w-1/2 rounded bg-slate-800/70" />
-                </div>
-                <div className="h-5 w-10 rounded-full bg-slate-800" />
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  </div>
-);
+import SettingsScreen from './SettingsScreen';
+import SettingsErrorBoundary from './SettingsErrorBoundary';
 
 const Dashboard: React.FC = () => {
   const {
@@ -76,10 +36,6 @@ const Dashboard: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [showSettingsContent, setShowSettingsContent] = useState(false);
-
-
-
   const toggleHistory = () => {
     if (historyOpen) { setHistoryOpen(false); return; }
     setSettingsOpen(false);
@@ -117,19 +73,6 @@ const Dashboard: React.FC = () => {
       window.removeEventListener('profile-save-end', onEnd);
     };
   }, []);
-
-  useEffect(() => {
-    if (!settingsOpen) {
-      setShowSettingsContent(false);
-      return;
-    }
-
-    const raf = window.requestAnimationFrame(() => {
-      setShowSettingsContent(true);
-    });
-
-    return () => window.cancelAnimationFrame(raf);
-  }, [settingsOpen]);
 
   if (isSetupHydrating) {
     return (
@@ -197,17 +140,11 @@ const Dashboard: React.FC = () => {
         {historyOpen ? (
           <HistoryScreen onBack={() => setHistoryOpen(false)} />
         ) : settingsOpen ? (
-          showSettingsContent ? (
-            <Suspense fallback={<SettingsInstantShell />}>
-              <SettingsScreen
-                onClose={() => setSettingsOpen(false)}
-                onOpenTrusted={() => { setSettingsOpen(false); if (!trustedActive) toggleTrusted(); }}
-                onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
-              />
-            </Suspense>
-          ) : (
-            <SettingsInstantShell />
-          )
+          <SettingsErrorBoundary>
+            <SettingsScreen
+              onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
+            />
+          </SettingsErrorBoundary>
         ) : (
           <>
             {/* Hero: emotion + cow + trusted circle overlay */}
