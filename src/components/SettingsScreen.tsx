@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
 
 import TrustedCircleManager from './TrustedCircleManager';
+import SubscriptionSection from './SubscriptionSection';
 
 interface SettingsScreenProps {
   onClose: () => void;
