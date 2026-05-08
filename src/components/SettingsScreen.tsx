@@ -286,6 +286,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose: _onClose, onOp
     return <TrustedCircleManager onBack={() => setTrustedManagerOpen(false)} />;
   }
 
+  if (!ready) {
+    return (
+      <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
+        <header className="flex items-center justify-between shrink-0">
+          <h1 className="text-base font-semibold">Settings</h1>
+          <span className="text-[11px] text-slate-400">v{version}</span>
+        </header>
+        <ShellBody version={version} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full w-full flex-col gap-3 min-h-0 animate-fade-in">
       <header className="flex items-center justify-between shrink-0">
