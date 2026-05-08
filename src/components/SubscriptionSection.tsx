@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, type SubscriptionPlan } from '@/hooks/useSubscription';
 import { cancelSubscription, startCheckout, type StripePriceKey } from '@/lib/stripe';
+import SubscriptionErrorBoundary from './SubscriptionErrorBoundary';
 
 const PLAN_META: Record<SubscriptionPlan, {
   label: string;
@@ -61,7 +62,51 @@ const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   </h2>
 );
 
-const SubscriptionSection: React.FC = () => {
+const SubscriptionSkeleton: React.FC = () => (
+  <section>
+    <SectionHeader>Subscription</SectionHeader>
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/40 overflow-hidden animate-pulse">
+      <div className="px-4 py-4 flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          <div className="h-4 w-28 bg-slate-800 rounded" />
+          <div className="h-3 w-40 bg-slate-800/70 rounded" />
+        </div>
+        <div className="h-5 w-16 bg-slate-800 rounded-full" />
+      </div>
+      <div className="border-t border-slate-800/70 px-4 py-3 space-y-2">
+        <div className="h-3 w-20 bg-slate-800/70 rounded" />
+        <div className="h-3 w-3/4 bg-slate-800/70 rounded" />
+        <div className="h-3 w-2/3 bg-slate-800/70 rounded" />
+      </div>
+      <div className="border-t border-slate-800/70 px-4 py-3">
+        <div className="h-9 w-full bg-slate-800 rounded" />
+      </div>
+    </div>
+  </section>
+);
+
+const safeRenewsAt = (value: unknown): Date | null => {
+  if (!value) return null;
+  try {
+    if (typeof (value as { toDate?: () => Date }).toDate === 'function') {
+      return (value as { toDate: () => Date }).toDate();
+    }
+    if (value instanceof Date) return value;
+    if (typeof value === 'string' || typeof value === 'number') {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof value === 'object' && 'seconds' in (value as Record<string, unknown>)) {
+      const seconds = Number((value as { seconds: number }).seconds);
+      return isNaN(seconds) ? null : new Date(seconds * 1000);
+    }
+  } catch (err) {
+    console.error('[Subscription] failed to parse renewsAt', err);
+  }
+  return null;
+};
+
+const SubscriptionSectionInner: React.FC = () => {
   const { uid } = useAuth();
   const { subscription, loading } = useSubscription();
   const { toast } = useToast();
@@ -71,10 +116,13 @@ const SubscriptionSection: React.FC = () => {
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
 
-  const plan: SubscriptionPlan = subscription?.plan ?? 'free';
-  const meta = PLAN_META[plan];
+  if (loading) return <SubscriptionSkeleton />;
+
+  const rawPlan = subscription?.plan ?? 'free';
+  const plan: SubscriptionPlan = (PLAN_META[rawPlan as SubscriptionPlan] ? rawPlan : 'free') as SubscriptionPlan;
+  const meta = PLAN_META[plan] ?? PLAN_META.free;
   const isPaid = plan !== 'free';
-  const renewsAt = subscription?.renewsAt?.toDate?.() ?? null;
+  const renewsAt = safeRenewsAt(subscription?.renewsAt);
 
   const handleCheckout = async (key: StripePriceKey) => {
     if (!uid) {
@@ -324,5 +372,11 @@ const SubscriptionSection: React.FC = () => {
     </section>
   );
 };
+
+const SubscriptionSection: React.FC = () => (
+  <SubscriptionErrorBoundary>
+    <SubscriptionSectionInner />
+  </SubscriptionErrorBoundary>
+);
 
 export default SubscriptionSection;
