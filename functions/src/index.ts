@@ -212,6 +212,49 @@ export const stripeWebhook = onRequest(
   },
 );
 
+// ============= AssemblyAI Streaming Token =============
+
+const ASSEMBLYAI_API_KEY = defineSecret("ASSEMBLYAI_API_KEY");
+
+/**
+ * Mints a single-use temporary streaming token for AssemblyAI Universal-Streaming.
+ *
+ * The frontend calls this from authenticated clients; the API key never leaves
+ * the server. Tokens are short-lived (default 60s, max 600s) and single-use per
+ * WebSocket session — request a fresh one for every reconnect.
+ *
+ * Returns: { token: string, expiresInSeconds: number }
+ */
+export const getAssemblyAIToken = onCall(
+  { secrets: [ASSEMBLYAI_API_KEY] },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new HttpsError("unauthenticated", "Sign-in required");
+    }
+
+    const expiresInSeconds = 60;
+    const url = `https://streaming.assemblyai.com/v3/token?expires_in_seconds=${expiresInSeconds}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { authorization: ASSEMBLYAI_API_KEY.value() },
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error("[getAssemblyAIToken] AssemblyAI error", res.status, body);
+        throw new HttpsError("internal", `AssemblyAI ${res.status}`);
+      }
+      const data = (await res.json()) as { token: string };
+      return { token: data.token, expiresInSeconds };
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      logger.error("[getAssemblyAIToken] failed", err);
+      throw new HttpsError("internal", "Failed to mint AssemblyAI token");
+    }
+  },
+);
+
 export const cancelSubscription = onCall(
   { secrets: [STRIPE_SECRET_KEY] },
   async (request) => {
