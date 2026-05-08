@@ -279,8 +279,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
                 <Switch
                   checked={isMonitoring}
                   onCheckedChange={(v) => {
-                    if (v !== isMonitoring) toggleMonitoring();
-                    persist({ ...settings, activeListening: v });
+                    console.log('[Settings] Active Listening toggle tapped. before:', { isMonitoring, activeListening: settings.activeListening }, 'requested:', v);
+                    if (v !== isMonitoring) {
+                      toggleMonitoring();
+                      console.log('[Settings] toggleMonitoring() called → expected isMonitoring:', v);
+                    } else {
+                      console.log('[Settings] toggleMonitoring() NOT called (already in requested state)');
+                    }
+                    persist({ ...settings, activeListening: v })
+                      .then(() => console.log('[Settings] persisted activeListening to Firestore:', v))
+                      .catch((err) => console.error('[Settings] persist activeListening failed:', err));
                   }}
                 />
               }
