@@ -691,6 +691,59 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Speech alerts are temporarily disabled to reduce noise while debugging Firestore writes.
   }, [heartRateStatus, speechStatus, isMonitoring, toast]);
+
+  // ---- AssemblyAI streaming lifecycle ----
+  // Activates only when (premium_plus | prestige) AND isMonitoring AND isTalking.
+  // Falls back gracefully to determineEmotion (handled in the emotion effect).
+  useEffect(() => {
+    const shouldStream = assemblyAIEnabled && isMonitoring && isTalking;
+
+    if (shouldStream) {
+      if (assemblyAIRef.current?.isActive()) return;
+      console.log('[AssemblyAI] starting stream (plan gated, isTalking=true)');
+      const stream = new AssemblyAIStream({
+        onSentiment: (sentiment, transcript) => {
+          lastSentimentRef.current = { sentiment, at: Date.now() };
+          console.log('[AssemblyAI] sentiment →', sentiment, '|', transcript.slice(0, 80));
+        },
+        onError: (err) => {
+          console.error('[AssemblyAI] stream error', err);
+          toast({
+            title: 'Speech analysis unavailable',
+            description: 'Falling back to baseline emotion detection.',
+            duration: 2500,
+          });
+        },
+        onStateChange: (s) => console.log('[AssemblyAI] state:', s),
+      });
+      assemblyAIRef.current = stream;
+      void stream.start();
+    } else {
+      if (assemblyAIRef.current) {
+        console.log('[AssemblyAI] stopping stream');
+        assemblyAIRef.current.stop();
+        assemblyAIRef.current = null;
+        lastSentimentRef.current = null;
+      }
+    }
+
+    return () => {
+      // On unmount or dep change requiring shutdown, ensure cleanup.
+      if (!shouldStream && assemblyAIRef.current) {
+        assemblyAIRef.current.stop();
+        assemblyAIRef.current = null;
+      }
+    };
+  }, [assemblyAIEnabled, isMonitoring, isTalking, toast]);
+
+  // Final teardown safety net.
+  useEffect(() => {
+    return () => {
+      assemblyAIRef.current?.stop();
+      assemblyAIRef.current = null;
+    };
+  }, []);
+
   
   const toggleMonitoring = () => {
     setIsMonitoring(prev => {
