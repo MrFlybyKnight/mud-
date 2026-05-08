@@ -6,7 +6,16 @@ import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
 import PermissionsScreen, { hasGrantedMic, hasDeclinedPermissions } from '@/components/PermissionsScreen';
 import { hasGrantedPermissions as hasGrantedHealth } from '@/health/healthConnect';
-import { getUserSettings } from '@/firebase/firestore';
+
+const computePermsResolved = (): boolean => {
+  try {
+    if (hasGrantedHealth() && hasGrantedMic()) return true;
+    if (hasDeclinedPermissions()) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+};
 
 const AppContent: React.FC = () => {
   const {
