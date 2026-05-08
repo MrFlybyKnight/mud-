@@ -29,14 +29,6 @@ const AppContent: React.FC = () => {
     </div>
   );
 };
-    <div className="min-h-screen bg-background">
-      {!isSetupComplete && <Header />}
-      <main>
-        <Dashboard />
-      </main>
-    </div>
-  );
-};
 
 const Index: React.FC = () => {
   const { user, loading } = useAuth();
