@@ -26,3 +26,12 @@ export async function startCheckout(priceKey: StripePriceKey, uid: string): Prom
     throw new Error("No checkout URL returned");
   }
 }
+
+export async function cancelSubscription(uid: string): Promise<void> {
+  const functions = getFunctions(app);
+  const cancelFn = httpsCallable<{ uid: string }, { success: boolean }>(
+    functions,
+    "cancelSubscription"
+  );
+  await cancelFn({ uid });
+}
