@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, type SubscriptionPlan } from '@/hooks/useSubscription';
 import { cancelSubscription, startCheckout, type StripePriceKey } from '@/lib/stripe';
+import SubscriptionErrorBoundary from './SubscriptionErrorBoundary';
 
 const PLAN_META: Record<SubscriptionPlan, {
   label: string;
