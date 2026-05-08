@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import {
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
-  
 } from 'firebase/firestore';
 import { updateEmail } from 'firebase/auth';
 import { db, auth } from '@/firebase/config';
