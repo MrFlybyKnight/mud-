@@ -7,7 +7,9 @@ export const BIOMETRICS_PATH = '/mud/biometrics';
 export const COMMANDS_PATH = '/mud/commands';
 export const DISTRESS_PATH = '/mud/distress';
 export const EMOTION_PATH = '/mud/emotion';
+export const DISPLAY_MODE_PATH = '/mud/display_mode';
 
+export type WatchDisplayMode = 'minimal' | 'standard' | 'full';
 export type WatchActivityState = 'still' | 'walking' | 'running';
 
 export interface BiometricPacket {
