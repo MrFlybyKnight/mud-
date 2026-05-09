@@ -12,6 +12,7 @@ import { useAuth } from './AuthContext';
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
+import { subscribeToWatchBiometrics } from '../health/wearDataReceiver';
 
 // Define the assessment data structure
 interface AssessmentData {
