@@ -70,8 +70,8 @@ const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 const Row: React.FC<{
   icon?: React.ComponentType<{ className?: string }>;
-  label: string;
-  description?: string;
+  label: React.ReactNode;
+  description?: React.ReactNode;
   onClick?: () => void;
   right?: React.ReactNode;
   disabled?: boolean;
@@ -276,10 +276,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
             <Row
               icon={mfaEnrolled ? ShieldCheck : Lock}
               label={
-                <>
-                  Two-factor authentication{' '}
+                <span className="inline-flex items-center gap-1.5">
+                  Two-factor authentication
                   {mfaEnrolled && <span aria-label="MFA active" title="MFA active">🔒</span>}
-                </> as unknown as string
+                </span>
               }
               description={mfaEnrolled ? 'Active — authenticator app' : 'Not set up'}
               onClick={() => (mfaEnrolled ? setMfaDisableOpen(true) : setMfaSetupOpen(true))}
