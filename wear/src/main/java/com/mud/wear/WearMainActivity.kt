@@ -140,6 +140,7 @@ class WearMainActivity : ComponentActivity() {
             stemDownAt = 0
             if (held > 1000) {
                 DataLayerService.sendDistress(this)
+                distressActive = true
                 vibrate(250)
             }
             return true
