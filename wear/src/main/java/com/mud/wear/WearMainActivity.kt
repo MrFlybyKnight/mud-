@@ -111,6 +111,7 @@ class WearMainActivity : ComponentActivity() {
                     color = emotionColor,
                     bpm = bpm,
                     distress = distressActive,
+                    dnd = dndActive,
                 )
             }
         }
