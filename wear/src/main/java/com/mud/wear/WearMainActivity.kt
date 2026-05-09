@@ -90,10 +90,6 @@ class WearMainActivity : ComponentActivity() {
             }
         }
     }
-                ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
