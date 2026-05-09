@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import SetupWizard from './SetupWizard';
 import ProfileSetup from './ProfileSetup';
 import MoodCow from './MoodCow';
 import NotificationCenter from './NotificationCenter';
-import HistoryScreen from './HistoryScreen';
 import EmergencyAlert from './EmergencyAlert';
 import EmotionTimelineBar from './EmotionTimelineBar';
 import MooMeter from './MooMeter';
@@ -13,7 +12,16 @@ import TrustedCircleOverlay from './TrustedCircleOverlay';
 import { useTrustedCircle } from '@/contexts/TrustedCircleContext';
 import { Heart, Mic, MicOff, Users, History, Settings, Activity, Pause, Play, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import SettingsScreen from './SettingsScreen';
+
+const HistoryScreen = lazy(() => import('./HistoryScreen'));
+const SettingsScreen = lazy(() => import('./SettingsScreen'));
+const SettingsDialog = lazy(() => import('./SettingsDialog'));
+
+const ScreenFallback: React.FC = () => (
+  <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+    Loading…
+  </div>
+);
 
 const Dashboard: React.FC = () => {
   const {
@@ -137,11 +145,15 @@ const Dashboard: React.FC = () => {
         )}
 
         {historyOpen ? (
-          <HistoryScreen onBack={() => setHistoryOpen(false)} />
+          <Suspense fallback={<ScreenFallback />}>
+            <HistoryScreen onBack={() => setHistoryOpen(false)} />
+          </Suspense>
         ) : settingsOpen ? (
-          <SettingsScreen
-            onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
-          />
+          <Suspense fallback={<ScreenFallback />}>
+            <SettingsScreen
+              onEditProfile={() => { setSettingsOpen(false); setEditingProfile(true); }}
+            />
+          </Suspense>
         ) : (
           <>
             {/* Hero: emotion + cow + trusted circle overlay */}
