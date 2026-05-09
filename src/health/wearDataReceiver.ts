@@ -24,16 +24,22 @@ import {
   BIOMETRICS_PATH,
   COMMANDS_PATH,
   DISTRESS_PATH,
+  SPEECH_DATA_PATH,
+  VOICE_PROFILE_PATH,
   type BiometricPacket,
+  type SpeechDataPacket,
+  type VoiceProfile,
   type WatchCommand,
 } from './DataLayerPaths';
 
 type BiometricListener = (packet: BiometricPacket) => void;
+type SpeechListener = (packet: SpeechDataPacket) => void;
 type DistressListener = () => void;
 
 interface MudWearBridge {
   isWatchConnected?: () => boolean;
   sendCommand?: (path: string, cmd: string) => void;
+  putDataItem?: (path: string, payload: Record<string, unknown>) => void;
 }
 
 declare global {
