@@ -13,6 +13,14 @@ import android.os.VibratorManager
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,6 +63,7 @@ class WearMainActivity : ComponentActivity() {
     private var emotionName by mutableStateOf("Calm")
     private var emotionColor by mutableStateOf(ComposeColor(0xFF7AB7FF))
     private var bpm by mutableStateOf(0)
+    private var distressActive by mutableStateOf(false)
     private var lastEmotionPayload: String = ""
 
     private var stemDownAt: Long = 0
@@ -67,6 +79,11 @@ class WearMainActivity : ComponentActivity() {
                         emotionName = parts.getOrNull(0) ?: emotionName
                         runCatching { emotionColor = ComposeColor(Color.parseColor(parts.getOrNull(1) ?: "#7AB7FF")) }
                         vibrate(40)
+                    }
+                }
+                DataLayerService.ACTION_COMMAND -> {
+                    if (intent.getStringExtra(DataLayerService.EXTRA_COMMAND) == "ack_distress") {
+                        distressActive = false
                     }
                 }
                 ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
@@ -86,6 +103,7 @@ class WearMainActivity : ComponentActivity() {
                     name = emotionName,
                     color = emotionColor,
                     bpm = bpm,
+                    distress = distressActive,
                 )
             }
         }
@@ -95,6 +113,7 @@ class WearMainActivity : ComponentActivity() {
         super.onResume()
         val filter = IntentFilter().apply {
             addAction(DataLayerService.ACTION_EMOTION)
+            addAction(DataLayerService.ACTION_COMMAND)
             addAction(ACTION_BPM)
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -121,6 +140,7 @@ class WearMainActivity : ComponentActivity() {
             stemDownAt = 0
             if (held > 1000) {
                 DataLayerService.sendDistress(this)
+                distressActive = true
                 vibrate(250)
             }
             return true
@@ -154,13 +174,75 @@ class WearMainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int) {
+private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int, distress: Boolean) {
+    // Smooth color transition between emotions (~700 ms cross-fade).
+    val ringColor by animateColorAsState(
+        targetValue = color,
+        animationSpec = tween(durationMillis = 700, easing = LinearEasing),
+        label = "ringColor",
+    )
+
+    // Slow pulse (alpha + stroke width) only while distress is active.
+    val pulse = rememberInfiniteTransition(label = "distressPulse")
+    val pulseAlpha by pulse.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulseAlpha",
+    )
+    val pulseStroke by pulse.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulseStroke",
+    )
+
+    val baseStrokeDp = 8.dp
+    val effectiveAlpha = if (distress) pulseAlpha else 1f
+    val effectiveStrokeMul = if (distress) pulseStroke else 1f
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(ComposeColor.Black),
         contentAlignment = Alignment.Center
     ) {
+        // Full-screen circular bezel ring.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokePx = baseStrokeDp.toPx() * effectiveStrokeMul
+            val inset = strokePx / 2f
+            val diameter = minOf(size.width, size.height) - strokePx
+            val topLeft = Offset(
+                x = (size.width - diameter) / 2f,
+                y = (size.height - diameter) / 2f,
+            )
+            // Dim base ring so the active color reads even at low alpha.
+            drawArc(
+                color = ringColor.copy(alpha = 0.18f),
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = strokePx),
+            )
+            drawArc(
+                color = ringColor.copy(alpha = effectiveAlpha),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(diameter, diameter),
+                style = Stroke(width = strokePx),
+            )
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -169,12 +251,12 @@ private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int) {
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .background(color, shape = androidx.compose.foundation.shape.CircleShape),
+                    .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("MūD", color = ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
-            Text(name, color = color, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             Row(bpm)
         }
     }
