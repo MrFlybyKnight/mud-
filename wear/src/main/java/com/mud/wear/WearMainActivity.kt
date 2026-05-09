@@ -61,10 +61,12 @@ import androidx.wear.compose.material.Text
 class WearMainActivity : ComponentActivity() {
 
     private var emotionName by mutableStateOf("Calm")
-    private var emotionColor by mutableStateOf(colorForEmotion("calm"))
+    private var emotionColor by mutableStateOf(colorForEmotion("calm") ?: ComposeColor(0xFF3FB984))
     private var bpm by mutableStateOf(0)
+    private var hrv by mutableStateOf(0)
     private var distressActive by mutableStateOf(false)
     private var dndActive by mutableStateOf(false)
+    private var displayMode by mutableStateOf("standard") // minimal | standard | full
     private var lastEmotionPayload: String = ""
 
     private var stemDownAt: Long = 0
@@ -79,11 +81,10 @@ class WearMainActivity : ComponentActivity() {
                         val parts = payload.split("|")
                         val name = parts.getOrNull(0) ?: emotionName
                         emotionName = name
-                        // Prefer canonical map by emotion name; fall back to phone-supplied hex.
                         emotionColor = colorForEmotion(name)
                             ?: runCatching { ComposeColor(Color.parseColor(parts.getOrNull(1) ?: "")) }
                                 .getOrDefault(emotionColor)
-                        vibrate(40)
+                        if (!dndActive) vibrate(40)
                     }
                 }
                 DataLayerService.ACTION_COMMAND -> {
@@ -93,15 +94,20 @@ class WearMainActivity : ComponentActivity() {
                         "dnd_off" -> dndActive = false
                     }
                 }
-                ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
+                DataLayerService.ACTION_DISPLAY_MODE -> {
+                    val mode = intent.getStringExtra(DataLayerService.EXTRA_DISPLAY_MODE)
+                    if (mode in setOf("minimal", "standard", "full")) displayMode = mode!!
+                }
+                ACTION_BPM -> {
+                    bpm = intent.getIntExtra(EXTRA_BPM, bpm)
+                    hrv = intent.getIntExtra(EXTRA_HRV, hrv)
+                }
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Make sure the sensor service is running while the watch face is active.
         HeartRateService.start(this)
 
         setContent {
@@ -110,8 +116,11 @@ class WearMainActivity : ComponentActivity() {
                     name = emotionName,
                     color = emotionColor,
                     bpm = bpm,
+                    hrv = hrv,
                     distress = distressActive,
                     dnd = dndActive,
+                    mode = displayMode,
+                    onSwipeDown = { dndActive = !dndActive },
                 )
             }
         }
@@ -122,6 +131,7 @@ class WearMainActivity : ComponentActivity() {
         val filter = IntentFilter().apply {
             addAction(DataLayerService.ACTION_EMOTION)
             addAction(DataLayerService.ACTION_COMMAND)
+            addAction(DataLayerService.ACTION_DISPLAY_MODE)
             addAction(ACTION_BPM)
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
