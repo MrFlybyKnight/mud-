@@ -112,20 +112,14 @@ export default function AuthForm() {
                 try {
                   await signInWithGoogle();
                 } catch (err: any) {
-                  if (isMfaRequiredError(err)) {
-                    setMfaResolver(getResolver(err));
-                    setMfaCode("");
-                    setMfaError(null);
-                  } else {
-                    const code = err?.code ?? "unknown";
-                    const message = err?.message ?? String(err);
-                    console.error("[Google sign-in failed]", { code, message, error: err });
-                    toast({
-                      title: "Google sign-in failed",
-                      description: `${code}: ${message}`,
-                      variant: "destructive",
-                    });
-                  }
+                  const code = err?.code ?? "unknown";
+                  const message = err?.message ?? String(err);
+                  console.error("[Google sign-in failed]", { code, message, error: err });
+                  toast({
+                    title: "Google sign-in failed",
+                    description: `${code}: ${message}`,
+                    variant: "destructive",
+                  });
                 } finally {
                   setBusy(false);
                 }
@@ -148,34 +142,6 @@ export default function AuthForm() {
         </form>
       </CardContent>
 
-      <Dialog open={!!mfaResolver} onOpenChange={(o) => { if (!o) setMfaResolver(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Two-factor authentication</DialogTitle>
-            <DialogDescription>
-              Enter the 6-digit code from your authenticator app.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="mfa-code" className="text-xs text-muted-foreground">Code</Label>
-            <Input
-              id="mfa-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-              className="tracking-[0.4em] text-center font-mono"
-              placeholder="123456"
-            />
-            {mfaError && <p className="text-xs text-destructive">{mfaError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMfaResolver(null)} disabled={busy}>Cancel</Button>
-            <Button onClick={handleMfaSubmit} disabled={busy || mfaCode.length !== 6}>Verify</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }
