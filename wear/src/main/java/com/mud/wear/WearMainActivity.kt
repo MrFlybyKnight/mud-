@@ -77,14 +77,20 @@ class WearMainActivity : ComponentActivity() {
                     if (payload != lastEmotionPayload) {
                         lastEmotionPayload = payload
                         val parts = payload.split("|")
-                        emotionName = parts.getOrNull(0) ?: emotionName
-                        runCatching { emotionColor = ComposeColor(Color.parseColor(parts.getOrNull(1) ?: "#7AB7FF")) }
+                        val name = parts.getOrNull(0) ?: emotionName
+                        emotionName = name
+                        // Prefer canonical map by emotion name; fall back to phone-supplied hex.
+                        emotionColor = colorForEmotion(name)
+                            ?: runCatching { ComposeColor(Color.parseColor(parts.getOrNull(1) ?: "")) }
+                                .getOrDefault(emotionColor)
                         vibrate(40)
                     }
                 }
                 DataLayerService.ACTION_COMMAND -> {
-                    if (intent.getStringExtra(DataLayerService.EXTRA_COMMAND) == "ack_distress") {
-                        distressActive = false
+                    when (intent.getStringExtra(DataLayerService.EXTRA_COMMAND)) {
+                        "ack_distress" -> distressActive = false
+                        "dnd_on" -> dndActive = true
+                        "dnd_off" -> dndActive = false
                     }
                 }
                 ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
