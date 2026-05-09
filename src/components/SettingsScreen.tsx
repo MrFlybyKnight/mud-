@@ -50,8 +50,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
-import { hasTotpEnrolled, unenrollTotp } from '@/lib/mfa';
-import MfaSetupDialog from './MfaSetupDialog';
+import { isDeviceRemembered, forgetThisDevice } from '@/lib/mfa';
+import { useSubscription } from '@/hooks/useSubscription';
+import EmailOtpDialog from './EmailOtpDialog';
 
 import TrustedCircleManager from './TrustedCircleManager';
 import SubscriptionSection from './SubscriptionSection';
@@ -124,14 +125,22 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
-  const [mfaSetupOpen, setMfaSetupOpen] = useState(false);
-  const [mfaDisableOpen, setMfaDisableOpen] = useState(false);
-  const [mfaEnrolled, setMfaEnrolled] = useState<boolean>(() => hasTotpEnrolled(user));
+  const [mfaOtpOpen, setMfaOtpOpen] = useState(false);
+  const [mfaForgetOpen, setMfaForgetOpen] = useState(false);
+  const [mfaVerified, setMfaVerified] = useState(false);
+  const { subscription } = useSubscription();
+  const plan = subscription?.plan ?? 'free';
+  const mfaAvailable = plan !== 'free';
   const activeListeningLockRef = useRef<number>(0);
 
   useEffect(() => {
-    setMfaEnrolled(hasTotpEnrolled(user));
-  }, [user]);
+    if (!user || !mfaAvailable) { setMfaVerified(false); return; }
+    let cancelled = false;
+    isDeviceRemembered(user, plan).then((ok) => {
+      if (!cancelled) setMfaVerified(ok);
+    });
+    return () => { cancelled = true; };
+  }, [user, plan, mfaAvailable]);
 
   // Apply text size globally
   useEffect(() => {
@@ -274,15 +283,30 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
               onClick={() => { setNewEmail(user?.email || ''); setEmailOpen(true); }}
             />
             <Row
-              icon={mfaEnrolled ? ShieldCheck : Lock}
+              icon={mfaVerified ? ShieldCheck : Lock}
               label={
                 <span className="inline-flex items-center gap-1.5">
-                  Two-factor authentication
-                  {mfaEnrolled && <span aria-label="MFA active" title="MFA active">🔒</span>}
+                  Email two-factor authentication
+                  {mfaVerified && <span aria-label="MFA active" title="MFA active">🔒</span>}
                 </span>
               }
-              description={mfaEnrolled ? 'Active — authenticator app' : 'Not set up'}
-              onClick={() => (mfaEnrolled ? setMfaDisableOpen(true) : setMfaSetupOpen(true))}
+              description={
+                !mfaAvailable
+                  ? 'Available on Premium Plus and Prestige'
+                  : mfaVerified
+                    ? plan === 'prestige'
+                      ? 'This device is trusted (re-verify every 7 days)'
+                      : 'This device is trusted'
+                    : 'Verify with a code sent to your email'
+              }
+              disabled={!mfaAvailable}
+              onClick={
+                !mfaAvailable
+                  ? undefined
+                  : mfaVerified
+                    ? () => setMfaForgetOpen(true)
+                    : () => setMfaOtpOpen(true)
+              }
             />
             <Row icon={LogOut} label="Sign Out" destructive onClick={() => setSignOutOpen(true)} />
           </Card>
@@ -603,20 +627,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
         </DialogContent>
       </Dialog>
 
-      {/* MFA setup */}
-      <MfaSetupDialog
-        open={mfaSetupOpen}
-        onOpenChange={setMfaSetupOpen}
-        onEnrolled={() => setMfaEnrolled(true)}
+      {/* Email OTP verify */}
+      <EmailOtpDialog
+        open={mfaOtpOpen}
+        onOpenChange={setMfaOtpOpen}
+        onVerified={() => setMfaVerified(true)}
       />
 
-      {/* MFA disable confirmation */}
-      <AlertDialog open={mfaDisableOpen} onOpenChange={setMfaDisableOpen}>
+      {/* Forget this device */}
+      <AlertDialog open={mfaForgetOpen} onOpenChange={setMfaForgetOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Turn off two-factor authentication?</AlertDialogTitle>
+            <AlertDialogTitle>Forget this device?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your account will be less secure. You can re-enable MFA at any time.
+              You'll need to verify with a code sent to your email next time you sign in on this device.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -625,18 +649,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
               onClick={async () => {
                 if (!user) return;
                 try {
-                  await unenrollTotp(user);
-                  setMfaEnrolled(false);
-                  toast({ title: 'Two-factor authentication disabled' });
+                  await forgetThisDevice(user);
+                  setMfaVerified(false);
+                  toast({ title: 'This device is no longer trusted' });
                 } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Could not disable MFA';
-                  toast({ title: 'Disable failed', description: msg, variant: 'destructive' });
+                  const msg = e instanceof Error ? e.message : 'Could not forget device';
+                  toast({ title: 'Failed', description: msg, variant: 'destructive' });
                 } finally {
-                  setMfaDisableOpen(false);
+                  setMfaForgetOpen(false);
                 }
               }}
             >
-              Turn off
+              Forget device
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

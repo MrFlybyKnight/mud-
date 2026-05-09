@@ -40,6 +40,22 @@ service cloud.firestore {
       match /dailySummaries/{summaryId} {
         allow read, write: if isOwner(uid);
       }
+
+      // MFA remembered-device records — owner can read; only Cloud Functions write.
+      match /mfaDevices/{deviceId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+    }
+
+    // Email-OTP state — managed exclusively by Cloud Functions.
+    match /emailOtps/{uid} {
+      allow read, write: if false;
+    }
+
+    // Trigger Email extension queue — write-only via Cloud Functions.
+    match /mail/{docId} {
+      allow read, write: if false;
     }
   }
 }
