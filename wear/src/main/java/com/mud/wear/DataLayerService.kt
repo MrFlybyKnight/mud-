@@ -27,16 +27,24 @@ class DataLayerService : WearableListenerService() {
         when (event.path) {
             DataLayerPaths.COMMANDS_PATH -> handleCommand(payload)
             DataLayerPaths.EMOTION_PATH -> broadcastEmotion(payload)
+            DataLayerPaths.DISPLAY_MODE_PATH -> broadcastDisplayMode(payload)
         }
     }
 
     override fun onDataChanged(events: DataEventBuffer) {
         events.forEach { ev ->
-            if (ev.type == DataEvent.TYPE_CHANGED && ev.dataItem.uri.path == DataLayerPaths.EMOTION_PATH) {
-                val map = DataMapItem.fromDataItem(ev.dataItem).dataMap
-                val color = map.getString("color") ?: "#888"
-                val name = map.getString("name") ?: "Calm"
-                broadcastEmotion("$name|$color")
+            if (ev.type != DataEvent.TYPE_CHANGED) return@forEach
+            val path = ev.dataItem.uri.path
+            val map = DataMapItem.fromDataItem(ev.dataItem).dataMap
+            when (path) {
+                DataLayerPaths.EMOTION_PATH -> {
+                    val color = map.getString("color") ?: "#888"
+                    val name = map.getString("name") ?: "Calm"
+                    broadcastEmotion("$name|$color")
+                }
+                DataLayerPaths.DISPLAY_MODE_PATH -> {
+                    broadcastDisplayMode(map.getString("mode") ?: "standard")
+                }
             }
         }
     }
@@ -65,12 +73,18 @@ class DataLayerService : WearableListenerService() {
         sendBroadcast(Intent(ACTION_EMOTION).putExtra(EXTRA_EMOTION, payload).setPackage(packageName))
     }
 
+    private fun broadcastDisplayMode(mode: String) {
+        sendBroadcast(Intent(ACTION_DISPLAY_MODE).putExtra(EXTRA_DISPLAY_MODE, mode).setPackage(packageName))
+    }
+
     companion object {
         private const val TAG = "MudDataLayer"
         const val ACTION_COMMAND = "com.mud.wear.COMMAND"
         const val ACTION_EMOTION = "com.mud.wear.EMOTION"
+        const val ACTION_DISPLAY_MODE = "com.mud.wear.DISPLAY_MODE"
         const val EXTRA_COMMAND = "cmd"
         const val EXTRA_EMOTION = "emotion"
+        const val EXTRA_DISPLAY_MODE = "mode"
 
         /** Send a distress signal to the phone. */
         fun sendDistress(ctx: android.content.Context) {

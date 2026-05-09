@@ -201,6 +201,14 @@ class HeartRateService : Service() {
             dataMap.putString("activityState", activityState)
         }.asPutDataRequest().setUrgent()
         runCatching { dataClient.putDataItem(req) }
+
+        // Mirror to the local UI so the watch face can render fresh values.
+        runCatching {
+            sendBroadcast(Intent("com.mud.wear.BPM")
+                .putExtra("bpm", lastBpm)
+                .putExtra("hrv", lastRmssd.toInt())
+                .setPackage(packageName))
+        }
     }
 
     // ------------------------------------------------------------------ notification

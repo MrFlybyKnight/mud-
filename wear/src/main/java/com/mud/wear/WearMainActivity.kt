@@ -21,6 +21,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,10 +63,12 @@ import androidx.wear.compose.material.Text
 class WearMainActivity : ComponentActivity() {
 
     private var emotionName by mutableStateOf("Calm")
-    private var emotionColor by mutableStateOf(colorForEmotion("calm"))
+    private var emotionColor by mutableStateOf(colorForEmotion("calm") ?: ComposeColor(0xFF3FB984))
     private var bpm by mutableStateOf(0)
+    private var hrv by mutableStateOf(0)
     private var distressActive by mutableStateOf(false)
     private var dndActive by mutableStateOf(false)
+    private var displayMode by mutableStateOf("standard") // minimal | standard | full
     private var lastEmotionPayload: String = ""
 
     private var stemDownAt: Long = 0
@@ -79,11 +83,10 @@ class WearMainActivity : ComponentActivity() {
                         val parts = payload.split("|")
                         val name = parts.getOrNull(0) ?: emotionName
                         emotionName = name
-                        // Prefer canonical map by emotion name; fall back to phone-supplied hex.
                         emotionColor = colorForEmotion(name)
                             ?: runCatching { ComposeColor(Color.parseColor(parts.getOrNull(1) ?: "")) }
                                 .getOrDefault(emotionColor)
-                        vibrate(40)
+                        if (!dndActive) vibrate(40)
                     }
                 }
                 DataLayerService.ACTION_COMMAND -> {
@@ -93,15 +96,20 @@ class WearMainActivity : ComponentActivity() {
                         "dnd_off" -> dndActive = false
                     }
                 }
-                ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
+                DataLayerService.ACTION_DISPLAY_MODE -> {
+                    val mode = intent.getStringExtra(DataLayerService.EXTRA_DISPLAY_MODE)
+                    if (mode in setOf("minimal", "standard", "full")) displayMode = mode!!
+                }
+                ACTION_BPM -> {
+                    bpm = intent.getIntExtra(EXTRA_BPM, bpm)
+                    hrv = intent.getIntExtra(EXTRA_HRV, hrv)
+                }
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Make sure the sensor service is running while the watch face is active.
         HeartRateService.start(this)
 
         setContent {
@@ -110,8 +118,11 @@ class WearMainActivity : ComponentActivity() {
                     name = emotionName,
                     color = emotionColor,
                     bpm = bpm,
+                    hrv = hrv,
                     distress = distressActive,
                     dnd = dndActive,
+                    mode = displayMode,
+                    onSwipeDown = { dndActive = !dndActive },
                 )
             }
         }
@@ -122,6 +133,7 @@ class WearMainActivity : ComponentActivity() {
         val filter = IntentFilter().apply {
             addAction(DataLayerService.ACTION_EMOTION)
             addAction(DataLayerService.ACTION_COMMAND)
+            addAction(DataLayerService.ACTION_DISPLAY_MODE)
             addAction(ACTION_BPM)
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
@@ -178,6 +190,7 @@ class WearMainActivity : ComponentActivity() {
     companion object {
         const val ACTION_BPM = "com.mud.wear.BPM"
         const val EXTRA_BPM = "bpm"
+        const val EXTRA_HRV = "hrv"
     }
 }
 
@@ -186,17 +199,18 @@ private fun MudWatchFace(
     name: String,
     color: ComposeColor,
     bpm: Int,
+    hrv: Int,
     distress: Boolean,
     dnd: Boolean,
+    mode: String,
+    onSwipeDown: () -> Unit,
 ) {
-    // Smooth color transition between emotions (300ms cross-fade).
     val ringColor by animateColorAsState(
         targetValue = color,
         animationSpec = tween(durationMillis = 300, easing = LinearEasing),
         label = "ringColor",
     )
 
-    // Slow pulse (2s cycle) only while distress is active.
     val pulse = rememberInfiniteTransition(label = "distressPulse")
     val pulseAlpha by pulse.animateFloat(
         initialValue = 0.35f,
@@ -209,20 +223,23 @@ private fun MudWatchFace(
     )
 
     val baseStrokeDp = 8.dp
-    // DND dims the entire ring to 40% opacity.
     val dndMul = if (dnd) 0.4f else 1f
     val activeAlpha = (if (distress) pulseAlpha else 1f) * dndMul
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ComposeColor.Black),
+            .background(ComposeColor.Black)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { _, dragY ->
+                    if (dragY > 18f) onSwipeDown()
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
-        // Full-screen circular bezel ring, flush against the screen edge.
+        // Bezel ring — always shown (this is the "minimal" mode)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokePx = baseStrokeDp.toPx()
-            // Inset by half the stroke so the outer edge of the ring sits flush on the screen edge.
             val diameter = minOf(size.width, size.height) - strokePx
             val topLeft = Offset(
                 x = (size.width - diameter) / 2f,
@@ -239,43 +256,69 @@ private fun MudWatchFace(
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("MūD", color = ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        when (mode) {
+            "minimal" -> {
+                // Bezel only — keep center clean.
             }
-            Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Row(bpm)
+            "full" -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("MūD", color = ComposeColor.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    BpmRow(bpm)
+                    Text(
+                        if (hrv > 0) "HRV ${hrv}ms" else "HRV --",
+                        color = ComposeColor.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                    )
+                    if (dnd) Text("Silent", color = ComposeColor.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                }
+            }
+            else -> { // standard
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("MūD", color = ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    if (dnd) Text("Silent", color = ComposeColor.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                }
+            }
         }
     }
 }
 
-/**
- * Canonical emotion → bezel color map, mirroring the phone app palette.
- * Returns null for unknown emotions so the caller can fall back to the phone-supplied color.
- */
 private fun colorForEmotion(name: String?): ComposeColor? = when (name?.trim()?.lowercase()) {
-    "calm" -> ComposeColor(0xFF3FB984)        // green
-    "excited" -> ComposeColor(0xFFFFD23F)     // yellow
-    "anxious", "anxiety" -> ComposeColor(0xFFFF8A3D) // orange
-    "stressed", "stress" -> ComposeColor(0xFFE5484D) // red
-    "focused", "focus" -> ComposeColor(0xFF3D7CFF)   // blue
-    "sad", "sadness" -> ComposeColor(0xFF6B7F99)     // blue-grey
-    "angry", "anger" -> ComposeColor(0xFFB3261E)     // deep red
-    "content" -> ComposeColor(0xFF8FBF6B)            // warm green
-    "neutral" -> ComposeColor(0xFF9AA0A6)            // grey
+    "calm" -> ComposeColor(0xFF3FB984)
+    "excited" -> ComposeColor(0xFFFFD23F)
+    "anxious", "anxiety" -> ComposeColor(0xFFFF8A3D)
+    "stressed", "stress" -> ComposeColor(0xFFE5484D)
+    "focused", "focus" -> ComposeColor(0xFF3D7CFF)
+    "sad", "sadness" -> ComposeColor(0xFF6B7F99)
+    "angry", "anger" -> ComposeColor(0xFFB3261E)
+    "content" -> ComposeColor(0xFF8FBF6B)
+    "neutral" -> ComposeColor(0xFF9AA0A6)
     else -> null
 }
 
 @Composable
-private fun Row(bpm: Int) {
+private fun BpmRow(bpm: Int) {
     androidx.compose.foundation.layout.Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

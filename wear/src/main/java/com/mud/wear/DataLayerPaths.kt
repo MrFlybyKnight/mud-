@@ -9,4 +9,5 @@ object DataLayerPaths {
     const val COMMANDS_PATH = "/mud/commands"
     const val DISTRESS_PATH = "/mud/distress"
     const val EMOTION_PATH = "/mud/emotion"
+    const val DISPLAY_MODE_PATH = "/mud/display_mode"
 }
