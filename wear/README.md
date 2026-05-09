@@ -40,12 +40,26 @@ wear/
 
 ## Data Layer paths
 
-| Path               | Direction        | Payload                                  |
-| ------------------ | ---------------- | ---------------------------------------- |
-| `/mud/biometrics`  | watch → phone    | `{ heartRate, hrv, timestamp, activityState }` |
-| `/mud/commands`    | phone → watch    | `start` \| `stop` \| `dnd_on` \| `dnd_off` \| `ack_distress` |
-| `/mud/emotion`     | phone → watch    | `{ name, color }`                        |
-| `/mud/distress`    | watch → phone    | `{ timestamp, source }`                  |
+| Path                  | Direction        | Payload                                  |
+| --------------------- | ---------------- | ---------------------------------------- |
+| `/mud/biometrics`     | watch → phone    | `{ heartRate, hrv, timestamp, activityState }` |
+| `/mud/commands`       | phone → watch    | `start` \| `stop` \| `dnd_on` \| `dnd_off` \| `ack_distress` |
+| `/mud/emotion`        | phone → watch    | `{ name, color }`                        |
+| `/mud/display_mode`   | phone → watch    | `{ mode: 'minimal' \| 'standard' \| 'full' }` |
+| `/mud/distress`       | watch → phone    | `{ timestamp, source }`                  |
+
+### Display modes
+
+The phone controls how dense the watch face is via `/mud/display_mode`:
+
+- **minimal** — only the colored bezel ring (max battery, max glanceability).
+- **standard** — bezel + central MūD circle + emotion name (default).
+- **full** — bezel + emotion + live BPM + HRV (RMSSD) readout.
+
+### Gestures
+
+- **Long-press the crown / stem button (>1s)** → sends `/mud/distress` to the phone.
+- **Swipe down on the watch face** → toggles Silent mode locally (bezel dims to 40%, no haptics on emotion change).
 
 The TypeScript mirror of these constants lives at
 `src/health/DataLayerPaths.ts`.
