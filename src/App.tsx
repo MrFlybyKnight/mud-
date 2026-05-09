@@ -18,7 +18,7 @@ import UpgradeModal from './components/UpgradeModal';
 import { TrustedCircleProvider } from './contexts/TrustedCircleContext';
 import WatchNotification from './components/WatchNotification';
 import EmergencyOverlay from './components/EmergencyOverlay';
-import { DebugPanel } from './components/DebugPanel';
+// DebugPanel removed for Play Store release.
 import ThemeFirestoreSync from './components/ThemeFirestoreSync';
 import './App.css';
 
@@ -44,7 +44,7 @@ const App = () => {
                         <WatchNotification />
                         <EmergencyOverlay />
                         <UpgradeModal />
-                        <DebugPanel />
+                        
                         <Toaster />
                       </FitnessProvider>
                     </NotificationProvider>
