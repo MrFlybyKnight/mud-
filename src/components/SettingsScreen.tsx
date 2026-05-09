@@ -602,6 +602,45 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MFA setup */}
+      <MfaSetupDialog
+        open={mfaSetupOpen}
+        onOpenChange={setMfaSetupOpen}
+        onEnrolled={() => setMfaEnrolled(true)}
+      />
+
+      {/* MFA disable confirmation */}
+      <AlertDialog open={mfaDisableOpen} onOpenChange={setMfaDisableOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turn off two-factor authentication?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your account will be less secure. You can re-enable MFA at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!user) return;
+                try {
+                  await unenrollTotp(user);
+                  setMfaEnrolled(false);
+                  toast({ title: 'Two-factor authentication disabled' });
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : 'Could not disable MFA';
+                  toast({ title: 'Disable failed', description: msg, variant: 'destructive' });
+                } finally {
+                  setMfaDisableOpen(false);
+                }
+              }}
+            >
+              Turn off
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
