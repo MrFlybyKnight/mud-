@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 
 const HistoryScreen = lazy(() => import('./HistoryScreen'));
 const SettingsScreen = lazy(() => import('./SettingsScreen'));
-const SettingsDialog = lazy(() => import('./SettingsDialog'));
+
 
 const ScreenFallback: React.FC = () => (
   <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
