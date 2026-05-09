@@ -188,6 +188,7 @@ class WearMainActivity : ComponentActivity() {
     companion object {
         const val ACTION_BPM = "com.mud.wear.BPM"
         const val EXTRA_BPM = "bpm"
+        const val EXTRA_HRV = "hrv"
     }
 }
 
@@ -196,17 +197,18 @@ private fun MudWatchFace(
     name: String,
     color: ComposeColor,
     bpm: Int,
+    hrv: Int,
     distress: Boolean,
     dnd: Boolean,
+    mode: String,
+    onSwipeDown: () -> Unit,
 ) {
-    // Smooth color transition between emotions (300ms cross-fade).
     val ringColor by animateColorAsState(
         targetValue = color,
         animationSpec = tween(durationMillis = 300, easing = LinearEasing),
         label = "ringColor",
     )
 
-    // Slow pulse (2s cycle) only while distress is active.
     val pulse = rememberInfiniteTransition(label = "distressPulse")
     val pulseAlpha by pulse.animateFloat(
         initialValue = 0.35f,
@@ -219,20 +221,23 @@ private fun MudWatchFace(
     )
 
     val baseStrokeDp = 8.dp
-    // DND dims the entire ring to 40% opacity.
     val dndMul = if (dnd) 0.4f else 1f
     val activeAlpha = (if (distress) pulseAlpha else 1f) * dndMul
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ComposeColor.Black),
+            .background(ComposeColor.Black)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { _, dragY ->
+                    if (dragY > 18f) onSwipeDown()
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
-        // Full-screen circular bezel ring, flush against the screen edge.
+        // Bezel ring — always shown (this is the "minimal" mode)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokePx = baseStrokeDp.toPx()
-            // Inset by half the stroke so the outer edge of the ring sits flush on the screen edge.
             val diameter = minOf(size.width, size.height) - strokePx
             val topLeft = Offset(
                 x = (size.width - diameter) / 2f,
@@ -249,43 +254,69 @@ private fun MudWatchFace(
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("MūD", color = ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        when (mode) {
+            "minimal" -> {
+                // Bezel only — keep center clean.
             }
-            Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Row(bpm)
+            "full" -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("MūD", color = ComposeColor.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    BpmRow(bpm)
+                    Text(
+                        if (hrv > 0) "HRV ${hrv}ms" else "HRV --",
+                        color = ComposeColor.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                    )
+                    if (dnd) Text("Silent", color = ComposeColor.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                }
+            }
+            else -> { // standard
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(ringColor, shape = androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("MūD", color = ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(name, color = ringColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    if (dnd) Text("Silent", color = ComposeColor.White.copy(alpha = 0.6f), fontSize = 10.sp)
+                }
+            }
         }
     }
 }
 
-/**
- * Canonical emotion → bezel color map, mirroring the phone app palette.
- * Returns null for unknown emotions so the caller can fall back to the phone-supplied color.
- */
 private fun colorForEmotion(name: String?): ComposeColor? = when (name?.trim()?.lowercase()) {
-    "calm" -> ComposeColor(0xFF3FB984)        // green
-    "excited" -> ComposeColor(0xFFFFD23F)     // yellow
-    "anxious", "anxiety" -> ComposeColor(0xFFFF8A3D) // orange
-    "stressed", "stress" -> ComposeColor(0xFFE5484D) // red
-    "focused", "focus" -> ComposeColor(0xFF3D7CFF)   // blue
-    "sad", "sadness" -> ComposeColor(0xFF6B7F99)     // blue-grey
-    "angry", "anger" -> ComposeColor(0xFFB3261E)     // deep red
-    "content" -> ComposeColor(0xFF8FBF6B)            // warm green
-    "neutral" -> ComposeColor(0xFF9AA0A6)            // grey
+    "calm" -> ComposeColor(0xFF3FB984)
+    "excited" -> ComposeColor(0xFFFFD23F)
+    "anxious", "anxiety" -> ComposeColor(0xFFFF8A3D)
+    "stressed", "stress" -> ComposeColor(0xFFE5484D)
+    "focused", "focus" -> ComposeColor(0xFF3D7CFF)
+    "sad", "sadness" -> ComposeColor(0xFF6B7F99)
+    "angry", "anger" -> ComposeColor(0xFFB3261E)
+    "content" -> ComposeColor(0xFF8FBF6B)
+    "neutral" -> ComposeColor(0xFF9AA0A6)
     else -> null
 }
 
 @Composable
-private fun Row(bpm: Int) {
+private fun BpmRow(bpm: Int) {
     androidx.compose.foundation.layout.Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
