@@ -38,6 +38,8 @@ import {
   RotateCcw,
   Bell,
   ShieldAlert,
+  ShieldCheck,
+  Lock,
   Users,
   Database,
   Download,
@@ -48,6 +50,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
+import { hasTotpEnrolled, unenrollTotp } from '@/lib/mfa';
+import MfaSetupDialog from './MfaSetupDialog';
 
 import TrustedCircleManager from './TrustedCircleManager';
 import SubscriptionSection from './SubscriptionSection';
@@ -120,7 +124,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
+  const [mfaSetupOpen, setMfaSetupOpen] = useState(false);
+  const [mfaDisableOpen, setMfaDisableOpen] = useState(false);
+  const [mfaEnrolled, setMfaEnrolled] = useState<boolean>(() => hasTotpEnrolled(user));
   const activeListeningLockRef = useRef<number>(0);
+
+  useEffect(() => {
+    setMfaEnrolled(hasTotpEnrolled(user));
+  }, [user]);
 
   // Apply text size globally
   useEffect(() => {
@@ -261,6 +272,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
               label="Change Email"
               description={user?.email || undefined}
               onClick={() => { setNewEmail(user?.email || ''); setEmailOpen(true); }}
+            />
+            <Row
+              icon={mfaEnrolled ? ShieldCheck : Lock}
+              label={
+                <>
+                  Two-factor authentication{' '}
+                  {mfaEnrolled && <span aria-label="MFA active" title="MFA active">🔒</span>}
+                </> as unknown as string
+              }
+              description={mfaEnrolled ? 'Active — authenticator app' : 'Not set up'}
+              onClick={() => (mfaEnrolled ? setMfaDisableOpen(true) : setMfaSetupOpen(true))}
             />
             <Row icon={LogOut} label="Sign Out" destructive onClick={() => setSignOutOpen(true)} />
           </Card>
