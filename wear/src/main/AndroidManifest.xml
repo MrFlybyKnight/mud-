@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- Wearable Data Layer is provided by Google Play Services - no extra permission required,
          but declare the wearable feature so Play Store recognises this as a wearable app. -->
@@ -46,6 +49,13 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="health" />
+
+        <!-- On-device voice fingerprint filtering for Active Listening -->
+        <service
+            android:name=".VoiceFilterService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <!-- Listens for messages/data from the phone -->
         <service
