@@ -182,38 +182,36 @@ class WearMainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int, distress: Boolean) {
-    // Smooth color transition between emotions (~700 ms cross-fade).
+private fun MudWatchFace(
+    name: String,
+    color: ComposeColor,
+    bpm: Int,
+    distress: Boolean,
+    dnd: Boolean,
+) {
+    // Smooth color transition between emotions (300ms cross-fade).
     val ringColor by animateColorAsState(
         targetValue = color,
-        animationSpec = tween(durationMillis = 700, easing = LinearEasing),
+        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
         label = "ringColor",
     )
 
-    // Slow pulse (alpha + stroke width) only while distress is active.
+    // Slow pulse (2s cycle) only while distress is active.
     val pulse = rememberInfiniteTransition(label = "distressPulse")
     val pulseAlpha by pulse.animateFloat(
-        initialValue = 0.45f,
+        initialValue = 0.35f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = LinearEasing),
+            animation = tween(durationMillis = 1000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "pulseAlpha",
     )
-    val pulseStroke by pulse.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulseStroke",
-    )
 
     val baseStrokeDp = 8.dp
-    val effectiveAlpha = if (distress) pulseAlpha else 1f
-    val effectiveStrokeMul = if (distress) pulseStroke else 1f
+    // DND dims the entire ring to 40% opacity.
+    val dndMul = if (dnd) 0.4f else 1f
+    val activeAlpha = (if (distress) pulseAlpha else 1f) * dndMul
 
     Box(
         modifier = Modifier
@@ -221,27 +219,17 @@ private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int, distress: 
             .background(ComposeColor.Black),
         contentAlignment = Alignment.Center
     ) {
-        // Full-screen circular bezel ring.
+        // Full-screen circular bezel ring, flush against the screen edge.
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokePx = baseStrokeDp.toPx() * effectiveStrokeMul
-            val inset = strokePx / 2f
+            val strokePx = baseStrokeDp.toPx()
+            // Inset by half the stroke so the outer edge of the ring sits flush on the screen edge.
             val diameter = minOf(size.width, size.height) - strokePx
             val topLeft = Offset(
                 x = (size.width - diameter) / 2f,
                 y = (size.height - diameter) / 2f,
             )
-            // Dim base ring so the active color reads even at low alpha.
             drawArc(
-                color = ringColor.copy(alpha = 0.18f),
-                startAngle = 0f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = Size(diameter, diameter),
-                style = Stroke(width = strokePx),
-            )
-            drawArc(
-                color = ringColor.copy(alpha = effectiveAlpha),
+                color = ringColor.copy(alpha = activeAlpha),
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -255,7 +243,6 @@ private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int, distress: 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // MūD cow icon tinted with current emotion color.
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -268,6 +255,23 @@ private fun MudWatchFace(name: String, color: ComposeColor, bpm: Int, distress: 
             Row(bpm)
         }
     }
+}
+
+/**
+ * Canonical emotion → bezel color map, mirroring the phone app palette.
+ * Returns null for unknown emotions so the caller can fall back to the phone-supplied color.
+ */
+private fun colorForEmotion(name: String?): ComposeColor? = when (name?.trim()?.lowercase()) {
+    "calm" -> ComposeColor(0xFF3FB984)        // green
+    "excited" -> ComposeColor(0xFFFFD23F)     // yellow
+    "anxious", "anxiety" -> ComposeColor(0xFFFF8A3D) // orange
+    "stressed", "stress" -> ComposeColor(0xFFE5484D) // red
+    "focused", "focus" -> ComposeColor(0xFF3D7CFF)   // blue
+    "sad", "sadness" -> ComposeColor(0xFF6B7F99)     // blue-grey
+    "angry", "anger" -> ComposeColor(0xFFB3261E)     // deep red
+    "content" -> ComposeColor(0xFF8FBF6B)            // warm green
+    "neutral" -> ComposeColor(0xFF9AA0A6)            // grey
+    else -> null
 }
 
 @Composable
