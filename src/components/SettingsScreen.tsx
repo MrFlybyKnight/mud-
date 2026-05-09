@@ -627,20 +627,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
         </DialogContent>
       </Dialog>
 
-      {/* MFA setup */}
-      <MfaSetupDialog
-        open={mfaSetupOpen}
-        onOpenChange={setMfaSetupOpen}
-        onEnrolled={() => setMfaEnrolled(true)}
+      {/* Email OTP verify */}
+      <EmailOtpDialog
+        open={mfaOtpOpen}
+        onOpenChange={setMfaOtpOpen}
+        onVerified={() => setMfaVerified(true)}
       />
 
-      {/* MFA disable confirmation */}
-      <AlertDialog open={mfaDisableOpen} onOpenChange={setMfaDisableOpen}>
+      {/* Forget this device */}
+      <AlertDialog open={mfaForgetOpen} onOpenChange={setMfaForgetOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Turn off two-factor authentication?</AlertDialogTitle>
+            <AlertDialogTitle>Forget this device?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your account will be less secure. You can re-enable MFA at any time.
+              You'll need to verify with a code sent to your email next time you sign in on this device.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -649,18 +649,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
               onClick={async () => {
                 if (!user) return;
                 try {
-                  await unenrollTotp(user);
-                  setMfaEnrolled(false);
-                  toast({ title: 'Two-factor authentication disabled' });
+                  await forgetThisDevice(user);
+                  setMfaVerified(false);
+                  toast({ title: 'This device is no longer trusted' });
                 } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Could not disable MFA';
-                  toast({ title: 'Disable failed', description: msg, variant: 'destructive' });
+                  const msg = e instanceof Error ? e.message : 'Could not forget device';
+                  toast({ title: 'Failed', description: msg, variant: 'destructive' });
                 } finally {
-                  setMfaDisableOpen(false);
+                  setMfaForgetOpen(false);
                 }
               }}
             >
-              Turn off
+              Forget device
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
