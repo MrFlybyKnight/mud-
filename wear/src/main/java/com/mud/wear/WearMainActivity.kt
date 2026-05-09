@@ -63,6 +63,7 @@ class WearMainActivity : ComponentActivity() {
     private var emotionName by mutableStateOf("Calm")
     private var emotionColor by mutableStateOf(ComposeColor(0xFF7AB7FF))
     private var bpm by mutableStateOf(0)
+    private var distressActive by mutableStateOf(false)
     private var lastEmotionPayload: String = ""
 
     private var stemDownAt: Long = 0
@@ -80,6 +81,15 @@ class WearMainActivity : ComponentActivity() {
                         vibrate(40)
                     }
                 }
+                DataLayerService.ACTION_COMMAND -> {
+                    if (intent.getStringExtra(DataLayerService.EXTRA_COMMAND) == "ack_distress") {
+                        distressActive = false
+                    }
+                }
+                ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
+            }
+        }
+    }
                 ACTION_BPM -> bpm = intent.getIntExtra(EXTRA_BPM, bpm)
             }
         }
