@@ -103,6 +103,7 @@ class WearMainActivity : ComponentActivity() {
                     name = emotionName,
                     color = emotionColor,
                     bpm = bpm,
+                    distress = distressActive,
                 )
             }
         }
@@ -112,6 +113,7 @@ class WearMainActivity : ComponentActivity() {
         super.onResume()
         val filter = IntentFilter().apply {
             addAction(DataLayerService.ACTION_EMOTION)
+            addAction(DataLayerService.ACTION_COMMAND)
             addAction(ACTION_BPM)
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
