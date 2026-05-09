@@ -12,7 +12,7 @@ import { useAuth } from './AuthContext';
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
-import { subscribeToWatchBiometrics } from '../health/wearDataReceiver';
+import { subscribeToWatchBiometrics, subscribeToWatchSpeech } from '../health/wearDataReceiver';
 
 // Define the assessment data structure
 interface AssessmentData {
@@ -409,21 +409,30 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(heartInterval);
   }, [isMonitoring, isTalking, speechStatus, baselineHeartRate, runInBackground, isSetupComplete]);
   
-  // Simulation effect for speech
+  // Filtered speech-percentage stream from the watch's VoiceFilterService.
+  // When connected, this overrides the phone-mic simulator below so the Moo
+  // Meter only counts audio that matches the user's voice fingerprint.
+  useEffect(() => {
+    const sub = subscribeToWatchSpeech(({ speechPercentage: pct }) => {
+      setSpeechPercentage(pct);
+    });
+    return sub.unsubscribe;
+  }, []);
+
+  // Simulation effect for speech (skipped while the watch is streaming filtered audio).
   useEffect(() => {
     if (!isMonitoring) return;
-    
-    // Only proceed if app is in foreground OR background running is enabled
     if (!isAppForeground.current && !runInBackground) return;
-    
+
     const speechInterval = setInterval(() => {
+      // Watch-filtered speech wins when available.
+      if (watchConnectedRef.current) return;
+
       const newSpeechPercentage = generateSpeechPercentage(isTalking, speechPercentage);
       setSpeechPercentage(newSpeechPercentage);
-      
-      // Add to assessment data
+
       if (isSetupComplete) {
         setCurrentAssessmentData(prev => {
-          // Initialize start time if not set
           const startTime = prev.startTime || new Date();
           return {
             heartRateReadings: prev.heartRateReadings,
@@ -433,7 +442,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
       }
     }, 500);
-    
+
     return () => clearInterval(speechInterval);
   }, [isMonitoring, isTalking, speechPercentage, runInBackground, isSetupComplete]);
   
