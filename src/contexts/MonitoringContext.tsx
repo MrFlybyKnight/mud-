@@ -179,6 +179,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const hrBufferRef = useRef<number[]>([]);
   const latestHrvRef = useRef<number | null>(null);
   const lastEmergencyRef = useRef<{ type: string; at: number } | null>(null);
+  const watchConnectedRef = useRef<boolean>(false);
   
   // Sync state
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
