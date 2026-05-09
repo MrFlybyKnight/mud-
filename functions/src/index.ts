@@ -1,15 +1,11 @@
 /**
- * Firebase Cloud Functions — rolling aggregation cleanup.
+ * Firebase Cloud Functions — rolling aggregation cleanup, Stripe, AssemblyAI,
+ * and Email-OTP MFA.
  *
  * Deploy with: cd functions && npm install && npm run deploy
- *
- * Schedules:
- *   - cleanupSubchecks: every 20 minutes, deletes subchecks older than 40 minutes.
- *   - cleanupCheckpoints: every hour, deletes checkpoints older than 25 hours.
- *
- * Runs server-side so cleanup happens even when the client app is closed.
  */
 import * as admin from "firebase-admin";
+import * as crypto from "crypto";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
@@ -60,12 +56,11 @@ const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
 
 const APP_URL = "https://7c85c1a9-4312-4a2a-b551-8aca3608b109.lovableproject.com";
 
-// Map Stripe price IDs -> plan tier. Configure these to your real price IDs.
 const PRICE_TO_PLAN: Record<string, "premium_plus" | "prestige"> = {
-  "price_1TUcqhH59vC8GNiM4RaOLvBv": "premium_plus", // Premium Plus Monthly
-  "price_1TUcrxH59vC8GNiMROfPP8aj": "premium_plus", // Premium Plus Annual
-  "price_1TUcxxH59vC8GNiMWqGvKENT": "prestige",     // Prestige Monthly
-  "price_1TUd3KH59vC8GNiMijExGSTL": "prestige",     // Prestige Annual
+  "price_1TUcqhH59vC8GNiM4RaOLvBv": "premium_plus",
+  "price_1TUcrxH59vC8GNiMROfPP8aj": "premium_plus",
+  "price_1TUcxxH59vC8GNiMWqGvKENT": "prestige",
+  "price_1TUd3KH59vC8GNiMijExGSTL": "prestige",
 };
 
 function stripeClient(): Stripe {
@@ -216,15 +211,6 @@ export const stripeWebhook = onRequest(
 
 const ASSEMBLYAI_API_KEY = defineSecret("ASSEMBLYAI_API_KEY");
 
-/**
- * Mints a single-use temporary streaming token for AssemblyAI Universal-Streaming.
- *
- * The frontend calls this from authenticated clients; the API key never leaves
- * the server. Tokens are short-lived (default 60s, max 600s) and single-use per
- * WebSocket session — request a fresh one for every reconnect.
- *
- * Returns: { token: string, expiresInSeconds: number }
- */
 export const getAssemblyAIToken = onCall(
   { secrets: [ASSEMBLYAI_API_KEY] },
   async (request) => {
@@ -287,3 +273,162 @@ export const cancelSubscription = onCall(
     return { ok: true };
   },
 );
+
+// ============= Email OTP MFA =============
+//
+// Sends a 6-digit verification code to the signed-in user's email.
+// Email delivery is handled by the Firebase "Trigger Email" extension —
+// this function just enqueues a document in the `mail` collection.
+//
+// Storage:
+//   emailOtps/{uid}                — codeHash, expiresAt, attempts, lockedUntl, email
+//   users/{uid}/mfaDevices/{devId} — verifiedAt timestamp for remembered devices
+//
+// Rules:
+//   - Code expires in 10 minutes.
+//   - 3 attempts before locking the account-MFA flow for 30 minutes.
+//   - Premium Plus: device remembered indefinitely once verified.
+//   - Prestige: device remembered for 7 days.
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_MAX_ATTEMPTS = 3;
+const OTP_LOCK_MS = 30 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function hashCode(code: string, uid: string): string {
+  return crypto.createHash("sha256").update(`${uid}:${code}`).digest("hex");
+}
+
+function generateCode(): string {
+  // Cryptographically random 6 digits, zero-padded.
+  const n = crypto.randomInt(0, 1_000_000);
+  return n.toString().padStart(6, "0");
+}
+
+function otpEmailHtml(code: string, appName = "MūD"): string {
+  return `
+    <div style="font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #0f172a;">
+      <h1 style="margin: 0 0 12px; font-size: 20px;">${appName} verification code</h1>
+      <p style="margin: 0 0 16px; color: #334155;">Use the code below to finish signing in. It expires in 10 minutes.</p>
+      <div style="font-size: 32px; font-weight: 700; letter-spacing: 8px; padding: 16px 24px; background: #f1f5f9; border-radius: 12px; text-align: center;">${code}</div>
+      <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">If you didn't try to sign in, you can ignore this email.</p>
+    </div>
+  `;
+}
+
+export const requestEmailOtp = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth?.uid) throw new HttpsError("unauthenticated", "Sign-in required");
+  const email = (auth.token.email as string | undefined) ?? null;
+  if (!email) throw new HttpsError("failed-precondition", "Account has no email address");
+
+  const uid = auth.uid;
+  const now = Date.now();
+  const otpRef = db.collection("emailOtps").doc(uid);
+  const existing = await otpRef.get();
+  if (existing.exists) {
+    const data = existing.data() as { lockedUntil?: number; lastSentAt?: number };
+    if (data.lockedUntil && data.lockedUntil > now) {
+      throw new HttpsError(
+        "resource-exhausted",
+        `Too many attempts. Try again in ${Math.ceil((data.lockedUntil - now) / 60000)} minutes.`,
+      );
+    }
+    if (data.lastSentAt && now - data.lastSentAt < OTP_RESEND_COOLDOWN_MS) {
+      throw new HttpsError(
+        "resource-exhausted",
+        `Please wait ${Math.ceil((OTP_RESEND_COOLDOWN_MS - (now - data.lastSentAt)) / 1000)}s before requesting another code.`,
+      );
+    }
+  }
+
+  const code = generateCode();
+  await otpRef.set({
+    email,
+    codeHash: hashCode(code, uid),
+    expiresAt: now + OTP_TTL_MS,
+    attempts: 0,
+    lockedUntil: 0,
+    lastSentAt: now,
+  });
+
+  // Enqueue for the Firebase "Trigger Email" extension.
+  await db.collection("mail").add({
+    to: [email],
+    message: {
+      subject: "Your MūD verification code",
+      html: otpEmailHtml(code),
+      text: `Your MūD verification code is ${code}. It expires in 10 minutes.`,
+    },
+  });
+
+  logger.info(`[requestEmailOtp] sent OTP to ${uid}`);
+  return { ok: true, email };
+});
+
+export const verifyEmailOtp = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth?.uid) throw new HttpsError("unauthenticated", "Sign-in required");
+  const uid = auth.uid;
+  const { code, deviceId } = (request.data ?? {}) as { code?: string; deviceId?: string };
+  if (!code || !/^\d{6}$/.test(code)) {
+    throw new HttpsError("invalid-argument", "6-digit code required");
+  }
+  if (!deviceId || typeof deviceId !== "string" || deviceId.length < 8) {
+    throw new HttpsError("invalid-argument", "deviceId required");
+  }
+
+  const otpRef = db.collection("emailOtps").doc(uid);
+  const snap = await otpRef.get();
+  if (!snap.exists) throw new HttpsError("failed-precondition", "Request a code first");
+  const data = snap.data() as {
+    codeHash: string;
+    expiresAt: number;
+    attempts: number;
+    lockedUntil: number;
+  };
+  const now = Date.now();
+  if (data.lockedUntil && data.lockedUntil > now) {
+    throw new HttpsError(
+      "resource-exhausted",
+      `Locked. Try again in ${Math.ceil((data.lockedUntil - now) / 60000)} minutes.`,
+    );
+  }
+  if (now > data.expiresAt) {
+    await otpRef.delete();
+    throw new HttpsError("deadline-exceeded", "Code expired. Request a new one.");
+  }
+
+  const matches = hashCode(code, uid) === data.codeHash;
+  if (!matches) {
+    const attempts = (data.attempts ?? 0) + 1;
+    const remaining = OTP_MAX_ATTEMPTS - attempts;
+    if (attempts >= OTP_MAX_ATTEMPTS) {
+      await otpRef.update({ attempts, lockedUntil: now + OTP_LOCK_MS });
+      throw new HttpsError("resource-exhausted", "Too many attempts. Locked for 30 minutes.");
+    }
+    await otpRef.update({ attempts });
+    throw new HttpsError("invalid-argument", `Incorrect code. ${remaining} attempt(s) left.`);
+  }
+
+  // Success — store remembered-device record and clear OTP.
+  await db
+    .collection("users").doc(uid)
+    .collection("mfaDevices").doc(deviceId)
+    .set({
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      userAgent: (request.rawRequest.headers["user-agent"] as string | undefined) ?? null,
+    });
+  await otpRef.delete();
+  logger.info(`[verifyEmailOtp] success for ${uid} device ${deviceId.slice(0, 6)}…`);
+  return { ok: true };
+});
+
+export const forgetMfaDevice = onCall(async (request) => {
+  const auth = request.auth;
+  if (!auth?.uid) throw new HttpsError("unauthenticated", "Sign-in required");
+  const { deviceId } = (request.data ?? {}) as { deviceId?: string };
+  if (!deviceId) throw new HttpsError("invalid-argument", "deviceId required");
+  await db.collection("users").doc(auth.uid).collection("mfaDevices").doc(deviceId).delete();
+  return { ok: true };
+});
