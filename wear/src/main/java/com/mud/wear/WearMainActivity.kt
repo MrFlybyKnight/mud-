@@ -61,9 +61,10 @@ import androidx.wear.compose.material.Text
 class WearMainActivity : ComponentActivity() {
 
     private var emotionName by mutableStateOf("Calm")
-    private var emotionColor by mutableStateOf(ComposeColor(0xFF7AB7FF))
+    private var emotionColor by mutableStateOf(colorForEmotion("calm"))
     private var bpm by mutableStateOf(0)
     private var distressActive by mutableStateOf(false)
+    private var dndActive by mutableStateOf(false)
     private var lastEmotionPayload: String = ""
 
     private var stemDownAt: Long = 0
