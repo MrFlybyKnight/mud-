@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { isMfaRequiredError, getResolver, resolveSignInWithTotp } from "@/lib/mfa";
+import type { MultiFactorResolver } from "firebase/auth";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -16,6 +19,9 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -40,11 +46,32 @@ export default function AuthForm() {
         toast({ title: "Password reset email sent" });
       }
     } catch (err) {
-      toast({
-        title: "Authentication error",
-        description: err instanceof Error ? err.message : String(err),
-        variant: "destructive",
-      });
+      if (isMfaRequiredError(err)) {
+        setMfaResolver(getResolver(err));
+        setMfaCode("");
+        setMfaError(null);
+      } else {
+        toast({
+          title: "Authentication error",
+          description: err instanceof Error ? err.message : String(err),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMfaSubmit = async () => {
+    if (!mfaResolver) return;
+    setBusy(true);
+    setMfaError(null);
+    try {
+      await resolveSignInWithTotp(mfaResolver, mfaCode);
+      toast({ title: "Signed in" });
+      setMfaResolver(null);
+    } catch (err) {
+      setMfaError(err instanceof Error ? err.message : "Invalid code");
     } finally {
       setBusy(false);
     }
