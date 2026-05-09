@@ -12,6 +12,7 @@ import { useAuth } from './AuthContext';
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
+import { subscribeToWatchBiometrics } from '../health/wearDataReceiver';
 
 // Define the assessment data structure
 interface AssessmentData {
@@ -178,6 +179,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const hrBufferRef = useRef<number[]>([]);
   const latestHrvRef = useRef<number | null>(null);
   const lastEmergencyRef = useRef<{ type: string; at: number } | null>(null);
+  const watchConnectedRef = useRef<boolean>(false);
   
   // Sync state
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -349,7 +351,26 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     console.log('[Sync] manualSync() called — no-op (writes are event-driven only)');
   };
 
-  // Simulation effect for heart rate
+  // Subscribe to live biometrics from the paired Wear OS watch. When packets
+  // arrive we treat them as ground truth and drive heart rate / HRV directly,
+  // bypassing the simulator below. If the watch disconnects (no packet within
+  // STALE_PACKET_MS) we silently fall back to simulation.
+  useEffect(() => {
+    const sub = subscribeToWatchBiometrics(({ heartRate: hr, hrv }) => {
+      watchConnectedRef.current = true;
+      if (hr > 0) setHeartRate(hr);
+      if (hrv > 0) latestHrvRef.current = hrv;
+    });
+    const probe = setInterval(() => {
+      watchConnectedRef.current = sub.isConnected();
+    }, 5_000);
+    return () => {
+      sub.unsubscribe();
+      clearInterval(probe);
+    };
+  }, []);
+
+  // Simulation effect for heart rate (skipped while the watch is streaming).
   useEffect(() => {
     if (!isMonitoring) return;
     
@@ -357,6 +378,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!isAppForeground.current && !runInBackground) return;
     
     const heartInterval = setInterval(async () => {
+      // Live watch data overrides simulation entirely.
+      if (watchConnectedRef.current) return;
+
       // Generate heart rate with influence from speech and current status
       let baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
       if (isTalking) baseline += 10;
