@@ -38,6 +38,8 @@ import {
   RotateCcw,
   Bell,
   ShieldAlert,
+  ShieldCheck,
+  Lock,
   Users,
   Database,
   Download,
@@ -48,6 +50,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import pkg from '../../package.json';
+import { hasTotpEnrolled, unenrollTotp } from '@/lib/mfa';
+import MfaSetupDialog from './MfaSetupDialog';
 
 import TrustedCircleManager from './TrustedCircleManager';
 import SubscriptionSection from './SubscriptionSection';
@@ -66,8 +70,8 @@ const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
 const Row: React.FC<{
   icon?: React.ComponentType<{ className?: string }>;
-  label: string;
-  description?: string;
+  label: React.ReactNode;
+  description?: React.ReactNode;
   onClick?: () => void;
   right?: React.ReactNode;
   disabled?: boolean;
@@ -120,7 +124,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [dndModeAskOpen, setDndModeAskOpen] = useState(false);
+  const [mfaSetupOpen, setMfaSetupOpen] = useState(false);
+  const [mfaDisableOpen, setMfaDisableOpen] = useState(false);
+  const [mfaEnrolled, setMfaEnrolled] = useState<boolean>(() => hasTotpEnrolled(user));
   const activeListeningLockRef = useRef<number>(0);
+
+  useEffect(() => {
+    setMfaEnrolled(hasTotpEnrolled(user));
+  }, [user]);
 
   // Apply text size globally
   useEffect(() => {
@@ -261,6 +272,17 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
               label="Change Email"
               description={user?.email || undefined}
               onClick={() => { setNewEmail(user?.email || ''); setEmailOpen(true); }}
+            />
+            <Row
+              icon={mfaEnrolled ? ShieldCheck : Lock}
+              label={
+                <span className="inline-flex items-center gap-1.5">
+                  Two-factor authentication
+                  {mfaEnrolled && <span aria-label="MFA active" title="MFA active">🔒</span>}
+                </span>
+              }
+              description={mfaEnrolled ? 'Active — authenticator app' : 'Not set up'}
+              onClick={() => (mfaEnrolled ? setMfaDisableOpen(true) : setMfaSetupOpen(true))}
             />
             <Row icon={LogOut} label="Sign Out" destructive onClick={() => setSignOutOpen(true)} />
           </Card>
@@ -580,6 +602,45 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ onEditProfile }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MFA setup */}
+      <MfaSetupDialog
+        open={mfaSetupOpen}
+        onOpenChange={setMfaSetupOpen}
+        onEnrolled={() => setMfaEnrolled(true)}
+      />
+
+      {/* MFA disable confirmation */}
+      <AlertDialog open={mfaDisableOpen} onOpenChange={setMfaDisableOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turn off two-factor authentication?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your account will be less secure. You can re-enable MFA at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!user) return;
+                try {
+                  await unenrollTotp(user);
+                  setMfaEnrolled(false);
+                  toast({ title: 'Two-factor authentication disabled' });
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : 'Could not disable MFA';
+                  toast({ title: 'Disable failed', description: msg, variant: 'destructive' });
+                } finally {
+                  setMfaDisableOpen(false);
+                }
+              }}
+            >
+              Turn off
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

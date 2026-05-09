@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { isMfaRequiredError, getResolver, resolveSignInWithTotp } from "@/lib/mfa";
+import type { MultiFactorResolver } from "firebase/auth";
 
 type Mode = "signin" | "signup" | "reset";
 
@@ -16,6 +19,9 @@ export default function AuthForm() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -40,11 +46,32 @@ export default function AuthForm() {
         toast({ title: "Password reset email sent" });
       }
     } catch (err) {
-      toast({
-        title: "Authentication error",
-        description: err instanceof Error ? err.message : String(err),
-        variant: "destructive",
-      });
+      if (isMfaRequiredError(err)) {
+        setMfaResolver(getResolver(err));
+        setMfaCode("");
+        setMfaError(null);
+      } else {
+        toast({
+          title: "Authentication error",
+          description: err instanceof Error ? err.message : String(err),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMfaSubmit = async () => {
+    if (!mfaResolver) return;
+    setBusy(true);
+    setMfaError(null);
+    try {
+      await resolveSignInWithTotp(mfaResolver, mfaCode);
+      toast({ title: "Signed in" });
+      setMfaResolver(null);
+    } catch (err) {
+      setMfaError(err instanceof Error ? err.message : "Invalid code");
     } finally {
       setBusy(false);
     }
@@ -112,14 +139,20 @@ export default function AuthForm() {
                 try {
                   await signInWithGoogle();
                 } catch (err: any) {
-                  const code = err?.code ?? "unknown";
-                  const message = err?.message ?? String(err);
-                  console.error("[Google sign-in failed]", { code, message, error: err });
-                  toast({
-                    title: "Google sign-in failed",
-                    description: `${code}: ${message}`,
-                    variant: "destructive",
-                  });
+                  if (isMfaRequiredError(err)) {
+                    setMfaResolver(getResolver(err));
+                    setMfaCode("");
+                    setMfaError(null);
+                  } else {
+                    const code = err?.code ?? "unknown";
+                    const message = err?.message ?? String(err);
+                    console.error("[Google sign-in failed]", { code, message, error: err });
+                    toast({
+                      title: "Google sign-in failed",
+                      description: `${code}: ${message}`,
+                      variant: "destructive",
+                    });
+                  }
                 } finally {
                   setBusy(false);
                 }
@@ -141,6 +174,35 @@ export default function AuthForm() {
           </div>
         </form>
       </CardContent>
+
+      <Dialog open={!!mfaResolver} onOpenChange={(o) => { if (!o) setMfaResolver(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Two-factor authentication</DialogTitle>
+            <DialogDescription>
+              Enter the 6-digit code from your authenticator app.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="mfa-code" className="text-xs text-muted-foreground">Code</Label>
+            <Input
+              id="mfa-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+              className="tracking-[0.4em] text-center font-mono"
+              placeholder="123456"
+            />
+            {mfaError && <p className="text-xs text-destructive">{mfaError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMfaResolver(null)} disabled={busy}>Cancel</Button>
+            <Button onClick={handleMfaSubmit} disabled={busy || mfaCode.length !== 6}>Verify</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

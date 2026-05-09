@@ -14,7 +14,7 @@ const getEncryptionKey = async (): Promise<CryptoKey> => {
   
   if (storedKey) {
     // Import existing key
-    const keyBuffer = Buffer.from(storedKey, 'base64');
+    const keyBuffer = new Uint8Array(Buffer.from(storedKey, 'base64'));
     return window.crypto.subtle.importKey(
       'raw',
       keyBuffer,
@@ -117,10 +117,10 @@ export const decryptData = async <T = any>(encryptedData: string): Promise<T> =>
     const decryptedContent = await window.crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv,
+        iv: new Uint8Array(iv),
       },
       key,
-      encryptedContent
+      new Uint8Array(encryptedContent)
     );
     
     // Convert to string and parse if it's JSON

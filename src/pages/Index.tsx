@@ -6,6 +6,7 @@ import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
 import PermissionsScreen, { hasGrantedMic, hasDeclinedPermissions } from '@/components/PermissionsScreen';
 import { hasGrantedPermissions as hasGrantedHealth } from '@/health/healthConnect';
+import MfaPrompt from '@/components/MfaPrompt';
 
 const computePermsResolved = (): boolean => {
   try {
@@ -60,7 +61,11 @@ const Index: React.FC = () => {
     return <PermissionsScreen onDone={() => setPermsResolved(true)} />;
   }
 
-  return <AppContent />;
+  return (
+    <MfaPrompt>
+      <AppContent />
+    </MfaPrompt>
+  );
 };
 
 export default Index;
