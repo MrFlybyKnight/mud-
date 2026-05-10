@@ -46,8 +46,15 @@ export function forgetLocalDevice(uid: string): void {
 
 /** Send a fresh OTP to the user's email. */
 export async function requestEmailOtp(_user: User): Promise<{ email: string }> {
-  const res = await callRequest({});
-  return res.data as { email: string };
+  console.log("[mfa] requestEmailOtp → calling Cloud Function");
+  try {
+    const res = await callRequest({});
+    console.log("[mfa] requestEmailOtp ✓", res.data);
+    return res.data as { email: string };
+  } catch (err) {
+    console.error("[mfa] requestEmailOtp failed", err);
+    throw err;
+  }
 }
 
 /** Verify a 6-digit code; on success the device is remembered server-side. */
