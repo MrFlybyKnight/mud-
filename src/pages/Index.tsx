@@ -6,7 +6,7 @@ import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
 import PermissionsScreen, { hasGrantedMic, hasDeclinedPermissions } from '@/components/PermissionsScreen';
 import { hasGrantedPermissions as hasGrantedHealth } from '@/health/healthConnect';
-import MfaPrompt from '@/components/MfaPrompt';
+// import MfaPrompt from '@/components/MfaPrompt';
 
 const computePermsResolved = (): boolean => {
   try {
@@ -62,9 +62,9 @@ const Index: React.FC = () => {
   }
 
   return (
-    <MfaPrompt>
+    // <MfaPrompt>
       <AppContent />
-    </MfaPrompt>
+    // </MfaPrompt>
   );
 };
 
