@@ -53,6 +53,15 @@ const Index: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
         <h1 className="text-3xl font-bold">MūD</h1>
         <AuthForm />
+        <footer className="text-xs text-muted-foreground flex gap-4 pt-2">
+          <a href="/privacy" className="hover:text-foreground underline-offset-4 hover:underline">
+            Privacy Policy
+          </a>
+          <span aria-hidden>·</span>
+          <a href="/terms" className="hover:text-foreground underline-offset-4 hover:underline">
+            Terms of Service
+          </a>
+        </footer>
       </div>
     );
   }
