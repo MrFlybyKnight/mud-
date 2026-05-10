@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 interface LegalPageProps {
   title: string;
@@ -34,6 +35,9 @@ const LegalShell: React.FC<LegalPageProps> = ({ title, children }) => {
           <Link to="/terms" className="hover:text-foreground">Terms</Link>
           <span className="ml-auto">© {new Date().getFullYear()} MūD by Ologi</span>
         </footer>
+        <div className="mt-3 flex justify-center">
+          <PoweredByBadge />
+        </div>
       </div>
     </div>
   );
