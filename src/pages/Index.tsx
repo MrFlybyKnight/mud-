@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Dashboard from '@/components/Dashboard';
 import AuthForm from '@/components/AuthForm';
+import PoweredByBadge from '@/components/PoweredByBadge';
 import PermissionsScreen, { hasGrantedMic, hasDeclinedPermissions } from '@/components/PermissionsScreen';
 import { hasGrantedPermissions as hasGrantedHealth } from '@/health/healthConnect';
 // import MfaPrompt from '@/components/MfaPrompt';
