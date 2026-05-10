@@ -21,17 +21,24 @@ export default function MfaPrompt({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    console.log("[MfaPrompt] effect run", { uid: user?.uid, plan });
     if (!user || plan === "free") {
+      console.log("[MfaPrompt] skipping MFA gate (no user or free plan)");
       setChecked(true);
       setVerified(true);
       return;
     }
     setChecked(false);
+    console.log("[MfaPrompt] checking isDeviceRemembered…");
     isDeviceRemembered(user, plan).then((ok) => {
       if (cancelled) return;
+      console.log("[MfaPrompt] isDeviceRemembered →", ok, "→ opening OTP dialog?", !ok);
       setVerified(ok);
       setOtpOpen(!ok);
       setChecked(true);
+    }).catch((err) => {
+      console.error("[MfaPrompt] isDeviceRemembered threw", err);
+      if (!cancelled) { setOtpOpen(true); setChecked(true); }
     });
     return () => { cancelled = true; };
   }, [user, plan]);
