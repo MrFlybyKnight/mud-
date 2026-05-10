@@ -62,9 +62,9 @@ const Index: React.FC = () => {
   }
 
   return (
-    <MfaPrompt>
+    // <MfaPrompt>
       <AppContent />
-    </MfaPrompt>
+    // </MfaPrompt>
   );
 };
 
