@@ -1,8 +1,1 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "one.mudring.app",
-    "sha256_cert_fingerprints": ["FINGERPRINT_HERE"]
-  }
-}]
+[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"one.mudring.app","sha256_cert_fingerprints":["75:06:47:49:56:CE:4D:53:8C:5A:3B:E2:50:3F:8D:4C:45:05:15:69:5C:45:E2:B2:7F:4F:A8:76:EF:1C:2D:AE"]}}]
