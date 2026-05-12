@@ -54,7 +54,7 @@ export const cleanupCheckpoints = onSchedule("every 60 minutes", async () => {
 const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
 
-const APP_URL = "https://7c85c1a9-4312-4a2a-b551-8aca3608b109.lovableproject.com";
+const APP_URL = "https://mudring.one";
 
 const PRICE_TO_PLAN: Record<string, "premium_plus" | "prestige"> = {
   "price_1TUcqhH59vC8GNiM4RaOLvBv": "premium_plus",
