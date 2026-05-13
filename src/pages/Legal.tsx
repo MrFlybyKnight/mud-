@@ -33,6 +33,7 @@ const LegalShell: React.FC<LegalPageProps> = ({ title, children }) => {
         <footer className="mt-12 pt-6 border-t border-border text-xs text-muted-foreground flex gap-4">
           <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
           <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          <Link to="/delete-account" className="hover:text-foreground">Delete Account</Link>
           <span className="ml-auto">© {new Date().getFullYear()} MūD by Ologi</span>
         </footer>
         <div className="mt-3 flex justify-center">
