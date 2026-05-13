@@ -204,3 +204,67 @@ export const TermsPage: React.FC = () => (
     </Section>
   </LegalShell>
 );
+
+export const DeleteAccountPage: React.FC = () => (
+  <LegalShell title="Delete Your MūD Account">
+    <p className="text-muted-foreground">
+      You can request deletion of your MūD account and all associated data at any time.
+      This page explains what will be removed, how long it takes, and how to start the process.
+    </p>
+
+    <Section title="How to request deletion">
+      <p>
+        Send an email to{" "}
+        <a className="text-primary hover:underline" href="mailto:support@ologi.net?subject=Delete%20My%20Account">
+          support@ologi.net
+        </a>{" "}
+        with the subject line <strong>Delete My Account</strong>. Include the email address
+        associated with your MūD account so we can verify ownership.
+      </p>
+      <p>
+        We will confirm receipt within 48 hours and begin processing your request.
+      </p>
+    </Section>
+
+    <Section title="What will be deleted">
+      <ul className="list-disc pl-5 space-y-1">
+        <li>Emotional history and all tracked mood or stress data.</li>
+        <li>Voice baseline and all speech analysis metrics.</li>
+        <li>Your profile, including display name, preferences, and settings.</li>
+        <li>Subscription and billing data linked to your account.</li>
+        <li>Trusted circle contacts and emergency alert configurations.</li>
+        <li>Fitness integration tokens and connected platform data.</li>
+      </ul>
+    </Section>
+
+    <Section title="Deletion timeline">
+      <p>
+        Most data is removed within <strong>7 business days</strong>. Complete erasure
+        from all backups and redundant systems may take up to <strong>30 days</strong>.
+        You will receive a confirmation email once the process is finished.
+      </p>
+    </Section>
+
+    <Section title="Data we may retain">
+      <p>
+        Some <strong>anonymized, aggregate data</strong> may be retained for analytics,
+        research, and service improvement. This data cannot be linked back to you or
+        your account.
+      </p>
+      <p>
+        We may also retain minimal records required by law (for example, billing information
+        for tax or accounting purposes) for the period mandated by applicable regulations.
+      </p>
+    </Section>
+
+    <Section title="Need help?">
+      <p>
+        If you have questions about account deletion, contact{" "}
+        <a className="text-primary hover:underline" href="mailto:support@ologi.net">
+          support@ologi.net
+        </a>
+        .
+      </p>
+    </Section>
+  </LegalShell>
+);
