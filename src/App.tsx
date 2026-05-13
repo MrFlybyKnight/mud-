@@ -3,7 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import Index from './pages/Index';
-import { PrivacyPage, TermsPage } from './pages/Legal';
+import { PrivacyPage, TermsPage, DeleteAccountPage } from './pages/Legal';
 import NotFound from './pages/NotFound';
 import { ProfileProvider } from './contexts/ProfileContext';
 import { MonitoringProvider } from './contexts/MonitoringContext';
@@ -42,6 +42,7 @@ const App = () => {
                           <Route path="/" element={<Index />} />
                           <Route path="/privacy" element={<PrivacyPage />} />
                           <Route path="/terms" element={<TermsPage />} />
+                          <Route path="/delete-account" element={<DeleteAccountPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                         <WatchNotification />
