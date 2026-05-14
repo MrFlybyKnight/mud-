@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Crown, Check, Loader2, CreditCard, ArrowUpRight } from 'lucide-react';
+import { Sparkles, Crown, Check, Loader2, CreditCard, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -15,8 +15,30 @@ import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, type SubscriptionPlan } from '@/hooks/useSubscription';
-import { cancelSubscription, startCheckout, type StripePriceKey } from '@/lib/stripe';
+import {
+  cancelSubscription,
+  downgradeSubscription,
+  startCheckout,
+  type StripePriceKey,
+} from '@/lib/stripe';
 import SubscriptionErrorBoundary from './SubscriptionErrorBoundary';
+
+// Features users LOSE when downgrading to a given target plan.
+const DOWNGRADE_LOSS: Record<SubscriptionPlan, string[]> = {
+  free: [
+    'Advanced AssemblyAI speech analysis',
+    'Full 16-emotion detection (back to HR-based core states)',
+    'Unlimited history (limited to last 7 days)',
+    'Unlimited Trusted Circle (limited to 1 contact)',
+    'Loquacity nudges & context suggestions',
+    'Data export',
+  ],
+  premium_plus: [
+    'Family plan sharing',
+    'Priority support',
+  ],
+  prestige: [],
+};
 
 const PLAN_META: Record<SubscriptionPlan, {
   label: string;
