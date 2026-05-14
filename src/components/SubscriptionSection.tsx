@@ -256,6 +256,16 @@ const SubscriptionSectionInner: React.FC = () => {
             {!isPaid && (
               <p className="mt-1 text-[11px] text-slate-400">No payment required</p>
             )}
+            {pendingPlan && pendingEffectiveAt && (
+              <p className="mt-1 text-[11px] text-amber-300">
+                Downgrades to {PLAN_META[pendingPlan]?.label ?? pendingPlan} on{' '}
+                {pendingEffectiveAt.toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </p>
+            )}
           </div>
           <span
             className={cn(
