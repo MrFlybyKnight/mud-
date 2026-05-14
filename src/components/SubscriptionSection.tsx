@@ -404,18 +404,35 @@ const SubscriptionSectionInner: React.FC = () => {
                 </div>
               )}
 
-              <Button
-                variant="ghost"
-                className="w-full text-red-300 hover:text-red-200 hover:bg-red-500/10"
-                disabled={cancelling}
-                onClick={() => setConfirmCancelOpen(true)}
-              >
-                {cancelling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Manage subscription · Cancel'
-                )}
-              </Button>
+              {downgradeTarget && !pendingPlan && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between text-amber-200 hover:text-amber-100 hover:bg-amber-500/10"
+                  disabled={downgrading}
+                  onClick={() => setConfirmDowngradeOpen(true)}
+                >
+                  <span className="flex items-center gap-2">
+                    <ArrowDownRight className="h-4 w-4" />
+                    Downgrade to {PLAN_META[downgradeTarget].label}
+                  </span>
+                  {downgrading && <Loader2 className="h-4 w-4 animate-spin" />}
+                </Button>
+              )}
+
+              {downgradeTarget !== 'free' && (
+                <Button
+                  variant="ghost"
+                  className="w-full text-red-300 hover:text-red-200 hover:bg-red-500/10"
+                  disabled={cancelling}
+                  onClick={() => setConfirmCancelOpen(true)}
+                >
+                  {cancelling ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Cancel subscription'
+                  )}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -426,10 +443,21 @@ const SubscriptionSectionInner: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel? You will lose access to premium features at the end of
-              your billing period.
+              You'll keep your current plan until the end of your billing period
+              {renewsAt
+                ? ` (${renewsAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}).`
+                : '.'}{' '}
+              After that you'll move to the Free plan and lose access to:
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <ul className="mt-2 space-y-1 text-xs text-slate-300 list-disc list-inside">
+            {DOWNGRADE_LOSS.free.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] text-slate-400">
+            Your data is retained — access just resumes the matching tier limits.
+          </p>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep my plan</AlertDialogCancel>
             <AlertDialogAction
@@ -437,6 +465,40 @@ const SubscriptionSectionInner: React.FC = () => {
               className="bg-red-500 hover:bg-red-500/90"
             >
               Yes, cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDowngradeOpen} onOpenChange={setConfirmDowngradeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Downgrade to {downgradeTarget ? PLAN_META[downgradeTarget].label : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The change takes effect at the end of your current billing period
+              {renewsAt
+                ? ` (${renewsAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}).`
+                : '.'}{' '}
+              Until then you keep full access. After the switch you'll lose:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="mt-2 space-y-1 text-xs text-slate-300 list-disc list-inside">
+            {(downgradeTarget ? DOWNGRADE_LOSS[downgradeTarget] : []).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] text-slate-400">
+            Your data is retained — only access is limited to the new tier's limits.
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current plan</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDowngrade}
+              className="bg-amber-500 hover:bg-amber-500/90 text-slate-900"
+            >
+              Schedule downgrade
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
