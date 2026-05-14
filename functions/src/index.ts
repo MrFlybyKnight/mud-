@@ -181,6 +181,36 @@ export const stripeWebhook = onRequest(
           });
           break;
         }
+        case "customer.subscription.updated": {
+          const sub = event.data.object as Stripe.Subscription;
+          const uid = sub.metadata?.uid as string | undefined;
+          if (!uid) break;
+          const subPriceId = sub.items.data[0]?.price.id;
+          const plan: "premium_plus" | "prestige" | "free" =
+            (subPriceId && PRICE_TO_PLAN[subPriceId]) || "free";
+          const renewsAt = sub.current_period_end
+            ? new Date(sub.current_period_end * 1000)
+            : null;
+          const status: "active" | "cancelled" =
+            sub.cancel_at_period_end || sub.status === "canceled" ? "cancelled" : "active";
+          await writeSubscription(uid, {
+            plan,
+            status,
+            renewsAt,
+            stripeSubscriptionId: sub.id,
+          });
+          // Clear pending downgrade fields once the price actually changes.
+          const ref = db.collection("users").doc(uid).collection("subscription").doc("current");
+          await ref.set(
+            {
+              pendingPlan: admin.firestore.FieldValue.delete(),
+              pendingPriceId: admin.firestore.FieldValue.delete(),
+              pendingEffectiveAt: admin.firestore.FieldValue.delete(),
+            },
+            { merge: true },
+          );
+          break;
+        }
         case "customer.subscription.deleted": {
           const sub = event.data.object as Stripe.Subscription;
           const uid = sub.metadata?.uid as string | undefined;
