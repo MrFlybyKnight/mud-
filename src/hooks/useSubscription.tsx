@@ -19,6 +19,9 @@ export interface SubscriptionDoc {
   status: SubscriptionStatus;
   renewsAt: Timestamp | null;
   updatedAt?: Timestamp;
+  pendingPlan?: SubscriptionPlan | null;
+  pendingPriceId?: string | null;
+  pendingEffectiveAt?: Timestamp | null;
 }
 
 export type GatedFeature =

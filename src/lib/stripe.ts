@@ -35,3 +35,16 @@ export async function cancelSubscription(uid: string): Promise<void> {
   );
   await cancelFn({ uid });
 }
+
+export async function downgradeSubscription(
+  uid: string,
+  targetPriceKey: StripePriceKey,
+): Promise<{ effectiveAt: string | null; targetPlan: string }> {
+  const functions = getFunctions(app);
+  const fn = httpsCallable<
+    { uid: string; targetPriceId: string },
+    { ok: boolean; effectiveAt: string | null; targetPlan: string }
+  >(functions, "downgradeSubscription");
+  const res = await fn({ uid, targetPriceId: STRIPE_PRICES[targetPriceKey] });
+  return { effectiveAt: res.data.effectiveAt, targetPlan: res.data.targetPlan };
+}

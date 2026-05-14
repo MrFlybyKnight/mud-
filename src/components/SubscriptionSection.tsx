@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Crown, Check, Loader2, CreditCard, ArrowUpRight } from 'lucide-react';
+import { Sparkles, Crown, Check, Loader2, CreditCard, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -15,8 +15,30 @@ import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, type SubscriptionPlan } from '@/hooks/useSubscription';
-import { cancelSubscription, startCheckout, type StripePriceKey } from '@/lib/stripe';
+import {
+  cancelSubscription,
+  downgradeSubscription,
+  startCheckout,
+  type StripePriceKey,
+} from '@/lib/stripe';
 import SubscriptionErrorBoundary from './SubscriptionErrorBoundary';
+
+// Features users LOSE when downgrading to a given target plan.
+const DOWNGRADE_LOSS: Record<SubscriptionPlan, string[]> = {
+  free: [
+    'Advanced AssemblyAI speech analysis',
+    'Full 16-emotion detection (back to HR-based core states)',
+    'Unlimited history (limited to last 7 days)',
+    'Unlimited Trusted Circle (limited to 1 contact)',
+    'Loquacity nudges & context suggestions',
+    'Data export',
+  ],
+  premium_plus: [
+    'Family plan sharing',
+    'Priority support',
+  ],
+  prestige: [],
+};
 
 const PLAN_META: Record<SubscriptionPlan, {
   label: string;
@@ -113,7 +135,9 @@ const SubscriptionSectionInner: React.FC = () => {
 
   const [loadingKey, setLoadingKey] = useState<StripePriceKey | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [downgrading, setDowngrading] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
 
   if (loading) return <SubscriptionSkeleton />;
@@ -123,6 +147,12 @@ const SubscriptionSectionInner: React.FC = () => {
   const meta = PLAN_META[plan] ?? PLAN_META.free;
   const isPaid = plan !== 'free';
   const renewsAt = safeRenewsAt(subscription?.renewsAt);
+  const pendingPlan = (subscription?.pendingPlan ?? null) as SubscriptionPlan | null;
+  const pendingEffectiveAt = safeRenewsAt(subscription?.pendingEffectiveAt);
+
+  // Downgrade target: Prestige → Premium Plus, Premium Plus → Free.
+  const downgradeTarget: SubscriptionPlan | null =
+    plan === 'prestige' ? 'premium_plus' : plan === 'premium_plus' ? 'free' : null;
 
   const handleCheckout = async (key: StripePriceKey) => {
     if (!uid) {
@@ -151,7 +181,7 @@ const SubscriptionSectionInner: React.FC = () => {
       await cancelSubscription(uid);
       toast({
         title: 'Subscription cancelled',
-        description: 'You will keep premium access until the end of your billing period.',
+        description: 'You will keep your current plan until the end of your billing period.',
       });
     } catch (err) {
       console.error('[Subscription] cancel failed', err);
@@ -162,6 +192,38 @@ const SubscriptionSectionInner: React.FC = () => {
       });
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleDowngrade = async () => {
+    if (!uid || !downgradeTarget) return;
+    setConfirmDowngradeOpen(false);
+    try {
+      setDowngrading(true);
+      if (downgradeTarget === 'free') {
+        // Downgrade to Free = cancel at period end.
+        await cancelSubscription(uid);
+        toast({
+          title: 'Downgrade scheduled',
+          description: 'You will move to the Free plan at the end of your billing period.',
+        });
+      } else {
+        // Prestige → Premium Plus, scheduled for end of period.
+        await downgradeSubscription(uid, 'premium_plus_monthly');
+        toast({
+          title: 'Downgrade scheduled',
+          description: 'You will move to Premium Plus at the end of your billing period.',
+        });
+      }
+    } catch (err) {
+      console.error('[Subscription] downgrade failed', err);
+      toast({
+        title: 'Could not downgrade',
+        description: (err as Error)?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDowngrading(false);
     }
   };
 
@@ -193,6 +255,16 @@ const SubscriptionSectionInner: React.FC = () => {
             )}
             {!isPaid && (
               <p className="mt-1 text-[11px] text-slate-400">No payment required</p>
+            )}
+            {pendingPlan && pendingEffectiveAt && (
+              <p className="mt-1 text-[11px] text-amber-300">
+                Downgrades to {PLAN_META[pendingPlan]?.label ?? pendingPlan} on{' '}
+                {pendingEffectiveAt.toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </p>
             )}
           </div>
           <span
@@ -332,18 +404,35 @@ const SubscriptionSectionInner: React.FC = () => {
                 </div>
               )}
 
-              <Button
-                variant="ghost"
-                className="w-full text-red-300 hover:text-red-200 hover:bg-red-500/10"
-                disabled={cancelling}
-                onClick={() => setConfirmCancelOpen(true)}
-              >
-                {cancelling ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Manage subscription · Cancel'
-                )}
-              </Button>
+              {downgradeTarget && !pendingPlan && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between text-amber-200 hover:text-amber-100 hover:bg-amber-500/10"
+                  disabled={downgrading}
+                  onClick={() => setConfirmDowngradeOpen(true)}
+                >
+                  <span className="flex items-center gap-2">
+                    <ArrowDownRight className="h-4 w-4" />
+                    Downgrade to {PLAN_META[downgradeTarget].label}
+                  </span>
+                  {downgrading && <Loader2 className="h-4 w-4 animate-spin" />}
+                </Button>
+              )}
+
+              {downgradeTarget !== 'free' && (
+                <Button
+                  variant="ghost"
+                  className="w-full text-red-300 hover:text-red-200 hover:bg-red-500/10"
+                  disabled={cancelling}
+                  onClick={() => setConfirmCancelOpen(true)}
+                >
+                  {cancelling ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Cancel subscription'
+                  )}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -354,10 +443,21 @@ const SubscriptionSectionInner: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel? You will lose access to premium features at the end of
-              your billing period.
+              You'll keep your current plan until the end of your billing period
+              {renewsAt
+                ? ` (${renewsAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}).`
+                : '.'}{' '}
+              After that you'll move to the Free plan and lose access to:
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <ul className="mt-2 space-y-1 text-xs text-slate-300 list-disc list-inside">
+            {DOWNGRADE_LOSS.free.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] text-slate-400">
+            Your data is retained — access just resumes the matching tier limits.
+          </p>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep my plan</AlertDialogCancel>
             <AlertDialogAction
@@ -365,6 +465,40 @@ const SubscriptionSectionInner: React.FC = () => {
               className="bg-red-500 hover:bg-red-500/90"
             >
               Yes, cancel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDowngradeOpen} onOpenChange={setConfirmDowngradeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Downgrade to {downgradeTarget ? PLAN_META[downgradeTarget].label : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The change takes effect at the end of your current billing period
+              {renewsAt
+                ? ` (${renewsAt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}).`
+                : '.'}{' '}
+              Until then you keep full access. After the switch you'll lose:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="mt-2 space-y-1 text-xs text-slate-300 list-disc list-inside">
+            {(downgradeTarget ? DOWNGRADE_LOSS[downgradeTarget] : []).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] text-slate-400">
+            Your data is retained — only access is limited to the new tier's limits.
+          </p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current plan</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDowngrade}
+              className="bg-amber-500 hover:bg-amber-500/90 text-slate-900"
+            >
+              Schedule downgrade
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
