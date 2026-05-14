@@ -135,7 +135,9 @@ const SubscriptionSectionInner: React.FC = () => {
 
   const [loadingKey, setLoadingKey] = useState<StripePriceKey | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [downgrading, setDowngrading] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [confirmDowngradeOpen, setConfirmDowngradeOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
 
   if (loading) return <SubscriptionSkeleton />;
@@ -145,6 +147,12 @@ const SubscriptionSectionInner: React.FC = () => {
   const meta = PLAN_META[plan] ?? PLAN_META.free;
   const isPaid = plan !== 'free';
   const renewsAt = safeRenewsAt(subscription?.renewsAt);
+  const pendingPlan = (subscription?.pendingPlan ?? null) as SubscriptionPlan | null;
+  const pendingEffectiveAt = safeRenewsAt(subscription?.pendingEffectiveAt);
+
+  // Downgrade target: Prestige → Premium Plus, Premium Plus → Free.
+  const downgradeTarget: SubscriptionPlan | null =
+    plan === 'prestige' ? 'premium_plus' : plan === 'premium_plus' ? 'free' : null;
 
   const handleCheckout = async (key: StripePriceKey) => {
     if (!uid) {
@@ -173,7 +181,7 @@ const SubscriptionSectionInner: React.FC = () => {
       await cancelSubscription(uid);
       toast({
         title: 'Subscription cancelled',
-        description: 'You will keep premium access until the end of your billing period.',
+        description: 'You will keep your current plan until the end of your billing period.',
       });
     } catch (err) {
       console.error('[Subscription] cancel failed', err);
@@ -184,6 +192,38 @@ const SubscriptionSectionInner: React.FC = () => {
       });
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleDowngrade = async () => {
+    if (!uid || !downgradeTarget) return;
+    setConfirmDowngradeOpen(false);
+    try {
+      setDowngrading(true);
+      if (downgradeTarget === 'free') {
+        // Downgrade to Free = cancel at period end.
+        await cancelSubscription(uid);
+        toast({
+          title: 'Downgrade scheduled',
+          description: 'You will move to the Free plan at the end of your billing period.',
+        });
+      } else {
+        // Prestige → Premium Plus, scheduled for end of period.
+        await downgradeSubscription(uid, 'premium_plus_monthly');
+        toast({
+          title: 'Downgrade scheduled',
+          description: 'You will move to Premium Plus at the end of your billing period.',
+        });
+      }
+    } catch (err) {
+      console.error('[Subscription] downgrade failed', err);
+      toast({
+        title: 'Could not downgrade',
+        description: (err as Error)?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDowngrading(false);
     }
   };
 
