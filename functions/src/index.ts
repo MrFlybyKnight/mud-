@@ -253,24 +253,127 @@ export const cancelSubscription = onCall(
     const ref = db.collection("users").doc(uid).collection("subscription").doc("current");
     const snap = await ref.get();
     const subId = snap.get("stripeSubscriptionId") as string | undefined;
+    const currentPlan = (snap.get("plan") as "free" | "premium_plus" | "prestige" | undefined) ?? "free";
 
+    let renewsAt: Date | null = null;
     if (subId) {
       const stripe = stripeClient();
       try {
-        await stripe.subscriptions.cancel(subId);
+        // Cancel at end of period — user retains access until then.
+        const updated = await stripe.subscriptions.update(subId, {
+          cancel_at_period_end: true,
+        });
+        renewsAt = new Date(updated.current_period_end * 1000);
       } catch (err) {
         logger.error("[cancelSubscription] stripe cancel failed", err);
       }
     }
 
+    // Keep current plan until period end; mark as cancelled so UI shows "Ends on …".
     await writeSubscription(uid, {
-      plan: "free",
+      plan: currentPlan,
       status: "cancelled",
-      renewsAt: null,
-      stripeSubscriptionId: null,
+      renewsAt,
     });
 
-    return { ok: true };
+    return { ok: true, effectiveAt: renewsAt?.toISOString() ?? null };
+  },
+);
+
+/**
+ * Downgrade from Prestige → Premium Plus at end of current billing period
+ * using a Stripe SubscriptionSchedule. The customer keeps Prestige access
+ * until period end, then automatically transitions to the new price.
+ */
+export const downgradeSubscription = onCall(
+  { secrets: [STRIPE_SECRET_KEY] },
+  async (request) => {
+    const { uid, targetPriceId } = (request.data ?? {}) as {
+      uid?: string;
+      targetPriceId?: string;
+    };
+    if (!uid || !targetPriceId) {
+      throw new HttpsError("invalid-argument", "uid and targetPriceId are required");
+    }
+    if (request.auth && request.auth.uid !== uid) {
+      throw new HttpsError("permission-denied", "uid mismatch");
+    }
+    const targetPlan = PRICE_TO_PLAN[targetPriceId];
+    if (!targetPlan) {
+      throw new HttpsError("invalid-argument", "Unknown targetPriceId");
+    }
+
+    const ref = db.collection("users").doc(uid).collection("subscription").doc("current");
+    const snap = await ref.get();
+    const subId = snap.get("stripeSubscriptionId") as string | undefined;
+    if (!subId) {
+      throw new HttpsError("failed-precondition", "No active subscription to downgrade");
+    }
+
+    const stripe = stripeClient();
+    const sub = await stripe.subscriptions.retrieve(subId);
+    const currentItem = sub.items.data[0];
+    const currentPriceId = currentItem?.price.id;
+    if (!currentPriceId) {
+      throw new HttpsError("failed-precondition", "Subscription has no price");
+    }
+    if (currentPriceId === targetPriceId) {
+      throw new HttpsError("failed-precondition", "Already on target plan");
+    }
+
+    // Create or release any existing schedule, then build a new one with a
+    // current phase ending at period_end and a new phase at the target price.
+    let scheduleId = sub.schedule
+      ? typeof sub.schedule === "string"
+        ? sub.schedule
+        : sub.schedule.id
+      : null;
+    if (scheduleId) {
+      try {
+        await stripe.subscriptionSchedules.release(scheduleId);
+      } catch (err) {
+        logger.warn("[downgradeSubscription] schedule release failed", err);
+      }
+      scheduleId = null;
+    }
+
+    const created = await stripe.subscriptionSchedules.create({
+      from_subscription: subId,
+    });
+
+    await stripe.subscriptionSchedules.update(created.id, {
+      end_behavior: "release",
+      phases: [
+        {
+          items: [{ price: currentPriceId, quantity: 1 }],
+          start_date: sub.current_period_start,
+          end_date: sub.current_period_end,
+          proration_behavior: "none",
+        },
+        {
+          items: [{ price: targetPriceId, quantity: 1 }],
+          iterations: 1,
+          proration_behavior: "none",
+          metadata: { uid, priceId: targetPriceId },
+        },
+      ],
+      metadata: { uid, downgradeTo: targetPlan },
+    });
+
+    const effectiveAt = new Date(sub.current_period_end * 1000);
+
+    // Reflect pending downgrade in Firestore — user keeps current plan until period end.
+    await ref.set(
+      {
+        pendingPlan: targetPlan,
+        pendingPriceId: targetPriceId,
+        pendingEffectiveAt: admin.firestore.Timestamp.fromDate(effectiveAt),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    return { ok: true, effectiveAt: effectiveAt.toISOString(), targetPlan };
   },
 );
 
