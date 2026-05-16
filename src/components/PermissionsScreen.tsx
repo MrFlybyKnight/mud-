@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Heart, Mic, Lock, Loader2 } from 'lucide-react';
+import { Heart, Mic, Lock, Loader2, Bluetooth } from 'lucide-react';
 import {
   requestHealthConnectPermissions,
   setSimulationMode,
@@ -41,6 +41,7 @@ const PermissionsScreen: React.FC<Props> = ({ onDone }) => {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [dontAsk, setDontAsk] = useState(false);
+  const [step, setStep] = useState<'bluetooth' | 'sensors'>('bluetooth');
 
   const persistDeclined = async () => {
     try { localStorage.setItem('permissions.declined', '1'); } catch { /* noop */ }
@@ -74,6 +75,29 @@ const PermissionsScreen: React.FC<Props> = ({ onDone }) => {
       onDone();
     }
   };
+
+  if (step === 'bluetooth') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full p-6 space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto rounded-full bg-primary/10 p-4 w-fit">
+              <Bluetooth className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-semibold">Connect your smartwatch</h2>
+            <p className="text-sm text-muted-foreground">
+              MūD uses Bluetooth to connect to your smartwatch to read your heart rate and HRV in real time.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => setStep('sensors')} className="w-full">
+              Continue
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
