@@ -2,7 +2,7 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { app } from "@/firebase/config";
 
 export const STRIPE_PUBLISHABLE_KEY =
-  "pk_test_51Noq6hH59vC8GNiMtpX0KifASuNT9oVMBfF3INtPnI8WJHp58hXj592FFFOS2hwkICsiE0J8bGP1oeBILGlhKOTm00KboyAVRQ";
+  "pk_live_51Noq6hH59vC8GNiM618p3Fzfx0LaeTS6yYk08Li4d5owiTclq6iJ4OAdEl0sQdzdafXnRcEYePzplfy88sFVMmrx00dUk9Lr9N";
 
 export const STRIPE_PRICES = {
   premium_plus_monthly: "price_1TUcqhH59vC8GNiM4RaOLvBv",
