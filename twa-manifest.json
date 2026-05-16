@@ -1,0 +1,59 @@
+{
+  "packageId": "one.mudring.app",
+  "host": "mudring.one",
+  "name": "MūD",
+  "launcherName": "MūD",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#0A1628",
+  "themeColorDark": "#0A1628",
+  "navigationColor": "#0A1628",
+  "navigationColorDark": "#0A1628",
+  "navigationDividerColor": "#0A1628",
+  "navigationDividerColorDark": "#0A1628",
+  "backgroundColor": "#0A1628",
+  "enableNotifications": true,
+  "startUrl": "https://mudring.one",
+  "iconUrl": "https://mudring.one/icon-512.png",
+  "maskableIconUrl": "https://mudring.one/icon-maskable-512.png",
+  "monochromeIconUrl": "https://mudring.one/icon-monochrome-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://mudring.one/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://mudring.one/",
+  "minSdkVersion": 23,
+  "orientation": "portrait",
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "1.0.0",
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.POST_NOTIFICATIONS",
+    "android.permission.VIBRATE",
+    "android.permission.WAKE_LOCK"
+  ]
+}
