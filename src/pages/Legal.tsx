@@ -110,8 +110,8 @@ export const PrivacyPage: React.FC = () => (
     <Section title="Contact">
       <p>
         Questions or requests? Email us at{" "}
-        <a className="text-primary hover:underline" href="mailto:support@ologi.net">
-          support@ologi.net
+        <a className="text-primary hover:underline" href="mailto:support@mudring.one">
+          support@mudring.one
         </a>
         .
       </p>
@@ -196,8 +196,8 @@ export const TermsPage: React.FC = () => (
     <Section title="9. Contact">
       <p>
         Questions about these Terms? Email{" "}
-        <a className="text-primary hover:underline" href="mailto:support@ologi.net">
-          support@ologi.net
+        <a className="text-primary hover:underline" href="mailto:support@mudring.one">
+          support@mudring.one
         </a>
         .
       </p>
@@ -215,8 +215,8 @@ export const DeleteAccountPage: React.FC = () => (
     <Section title="How to request deletion">
       <p>
         Send an email to{" "}
-        <a className="text-primary hover:underline" href="mailto:support@ologi.net?subject=Delete%20My%20Account">
-          support@ologi.net
+        <a className="text-primary hover:underline" href="mailto:support@mudring.one?subject=Delete%20My%20Account">
+          support@mudring.one
         </a>{" "}
         with the subject line <strong>Delete My Account</strong>. Include the email address
         associated with your MūD account so we can verify ownership.
@@ -260,8 +260,8 @@ export const DeleteAccountPage: React.FC = () => (
     <Section title="Need help?">
       <p>
         If you have questions about account deletion, contact{" "}
-        <a className="text-primary hover:underline" href="mailto:support@ologi.net">
-          support@ologi.net
+        <a className="text-primary hover:underline" href="mailto:support@mudring.one">
+          support@mudring.one
         </a>
         .
       </p>
