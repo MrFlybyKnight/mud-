@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import Index from './pages/Index';
+import Landing from './pages/Landing';
 import { PrivacyPage, TermsPage, DeleteAccountPage } from './pages/Legal';
 import NotFound from './pages/NotFound';
 import { ProfileProvider } from './contexts/ProfileContext';
@@ -40,6 +41,7 @@ const App = () => {
                       <FitnessProvider>
                         <Routes>
                           <Route path="/" element={<Index />} />
+                          <Route path="/landing" element={<Landing />} />
                           <Route path="/privacy" element={<PrivacyPage />} />
                           <Route path="/terms" element={<TermsPage />} />
                           <Route path="/delete-account" element={<DeleteAccountPage />} />
