@@ -23,18 +23,28 @@ const EMOTION_COLOR: Record<EmotionType, { body: string; spot: string; accent: s
 interface MoodCowProps {
   emotion: EmotionType;
   className?: string;
+  /** Secret Flow State override — renders the cow in solid gold with a slow pulse. */
+  flowActive?: boolean;
 }
 
-const MoodCow: React.FC<MoodCowProps> = ({ emotion, className }) => {
-  const c = EMOTION_COLOR[emotion] ?? EMOTION_COLOR.neutral;
+const FLOW_GOLD = '#FFD700';
+const FLOW_SPOT = '#C9A227';
+const FLOW_ACCENT = '#FFE680';
+const FLOW_CHEEK = '#E0B400';
+
+const MoodCow: React.FC<MoodCowProps> = ({ emotion, className, flowActive }) => {
+  const base = EMOTION_COLOR[emotion] ?? EMOTION_COLOR.neutral;
+  const c = flowActive
+    ? { body: FLOW_GOLD, spot: FLOW_SPOT, accent: FLOW_ACCENT, cheek: FLOW_CHEEK }
+    : base;
   const stroke = '#3a2a2a';
 
   return (
     <svg
       viewBox="0 0 200 200"
-      className={className}
+      className={`${className ?? ''} ${flowActive ? 'animate-flow-pulse' : ''}`.trim()}
       role="img"
-      aria-label={`MūD cow — ${emotion}`}
+      aria-label={flowActive ? 'MūD cow — flow state' : `MūD cow — ${emotion}`}
     >
       {/* soft ground shadow */}
       <ellipse cx="100" cy="178" rx="62" ry="6" fill="#000" opacity="0.08" />

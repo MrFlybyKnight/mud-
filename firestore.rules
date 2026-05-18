@@ -41,6 +41,11 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // Flow State sessions (secret 17th emotion — Easter egg).
+      match /flowSessions/{sessionId} {
+        allow read, write: if isOwner(uid);
+      }
+
       // MFA remembered-device records — owner can read; only Cloud Functions write.
       match /mfaDevices/{deviceId} {
         allow read: if isOwner(uid);

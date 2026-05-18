@@ -14,8 +14,14 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
 import { getEmotionColor, ALL_EMOTIONS } from '@/utils/emotionUtils';
-import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
+import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  computeEarnedAchievements,
+  FLOW_ACHIEVEMENTS,
+  FLOW_GOLD,
+  type FlowSessionLite,
+} from '@/utils/flowState';
 
 const EMOTION_ORDER: EmotionType[] = ALL_EMOTIONS;
 
@@ -56,12 +62,13 @@ const checkpointCache = new Map<string, { count: number; data: Checkpoint[] }>()
 
 const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
   const { uid } = useAuth();
-  const { subcheckWriteCount } = useMonitoring();
+  const { subcheckWriteCount, flowSessionWriteCount, flowDiscovered } = useMonitoring();
   const { notifications } = useNotification();
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(() =>
     uid ? checkpointCache.get(uid)?.data ?? [] : [],
   );
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [flowSessions, setFlowSessions] = useState<Array<FlowSessionLite & { id: string }>>([]);
 
   useEffect(() => {
     if (!uid) {
@@ -112,6 +119,48 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
     })();
     return () => { cancelled = true; };
   }, [uid, subcheckWriteCount]);
+
+  // Fetch Flow State sessions (secret 17th emotion). Only render the section
+  // if the user has actually discovered Flow — keeps the Easter egg hidden.
+  useEffect(() => {
+    if (!uid || !flowDiscovered) { setFlowSessions([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'flowSessions'),
+          orderBy('startedAt', 'desc'),
+          limit(50),
+        );
+        const snap = await getDocs(q);
+        const next: Array<FlowSessionLite & { id: string }> = [];
+        snap.forEach((d) => {
+          const data = d.data() as {
+            startedAt?: { toDate?: () => Date } | Date;
+            durationMinutes?: number;
+          };
+          const start =
+            data.startedAt instanceof Date
+              ? data.startedAt
+              : data.startedAt?.toDate?.() ?? new Date();
+          next.push({
+            id: d.id,
+            startedAt: start.getTime(),
+            durationMinutes: data.durationMinutes ?? 0,
+          });
+        });
+        if (!cancelled) setFlowSessions(next);
+      } catch (err) {
+        console.warn('[History] flow fetch error', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid, flowSessionWriteCount, flowDiscovered]);
+
+  const earnedAchievements = useMemo(
+    () => computeEarnedAchievements(flowSessions),
+    [flowSessions],
+  );
 
   // Histogram: minutes per emotion today
   const histogram = useMemo(() => {
@@ -268,6 +317,65 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
           );
         })}
       </div>
+
+      {/* Flow State — only rendered after the user has discovered it. */}
+      {flowDiscovered && flowSessions.length > 0 && (
+        <section
+          className="shrink-0 rounded-2xl border p-3"
+          style={{ borderColor: FLOW_GOLD, background: 'rgba(255, 215, 0, 0.06)' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4" style={{ color: FLOW_GOLD }} />
+              <h2 className="text-sm font-semibold" style={{ color: FLOW_GOLD }}>
+                Flow State 🌊
+              </h2>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: FLOW_GOLD }}>
+              {flowSessions.length} session{flowSessions.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <ul className="space-y-1.5">
+            {flowSessions.slice(0, 5).map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs"
+                style={{ background: 'rgba(255, 215, 0, 0.08)' }}
+              >
+                <span
+                  className="inline-flex h-5 px-2 items-center rounded-full text-[10px] font-semibold text-black"
+                  style={{ background: FLOW_GOLD }}
+                >
+                  FLOW
+                </span>
+                <span className="text-slate-200 tabular-nums">
+                  {new Date(s.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <span className="ml-auto tabular-nums" style={{ color: FLOW_GOLD }}>
+                  {s.durationMinutes}m
+                </span>
+              </li>
+            ))}
+          </ul>
+          {earnedAchievements.length > 0 && (
+            <div className="mt-3 pt-2 border-t flex flex-wrap gap-1.5" style={{ borderColor: 'rgba(255,215,0,0.25)' }}>
+              {earnedAchievements.map((id) => {
+                const a = FLOW_ACHIEVEMENTS[id];
+                return (
+                  <span
+                    key={id}
+                    title={a.description}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-black"
+                    style={{ background: FLOW_GOLD }}
+                  >
+                    ★ {a.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Pinned histogram */}
       <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/50 p-3">

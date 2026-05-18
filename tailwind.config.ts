@@ -94,6 +94,10 @@ export default {
 				wave: {
 					'0%': { transform: 'translateX(0)' },
 					'100%': { transform: 'translateX(-50%)' }
+				},
+				'flow-pulse': {
+					'0%, 100%': { filter: 'drop-shadow(0 0 0px #FFD700)', transform: 'scale(1)' },
+					'50%':      { filter: 'drop-shadow(0 0 24px #FFD700)', transform: 'scale(1.03)' }
 				}
 			},
 			animation: {
@@ -101,6 +105,7 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'pulse': 'pulse 1.5s infinite',
 				'wave': 'wave 8s linear infinite',
+				'flow-pulse': 'flow-pulse 3.2s ease-in-out infinite',
 			}
 		}
 	},
