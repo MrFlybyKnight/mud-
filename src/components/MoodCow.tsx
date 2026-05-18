@@ -42,9 +42,9 @@ const MoodCow: React.FC<MoodCowProps> = ({ emotion, className, flowActive }) => 
   return (
     <svg
       viewBox="0 0 200 200"
-      className={className}
+      className={`${className ?? ''} ${flowActive ? 'animate-flow-pulse' : ''}`.trim()}
       role="img"
-      aria-label={`MūD cow — ${emotion}`}
+      aria-label={flowActive ? 'MūD cow — flow state' : `MūD cow — ${emotion}`}
     >
       {/* soft ground shadow */}
       <ellipse cx="100" cy="178" rx="62" ry="6" fill="#000" opacity="0.08" />
