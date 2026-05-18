@@ -35,6 +35,7 @@ const Dashboard: React.FC = () => {
     toggleMonitoring,
     isTalking,
     toggleTalking,
+    flowActive,
   } = useMonitoring();
   const { isProfileComplete } = useProfile();
   const { isActive: trustedActive, toggleActive: toggleTrusted } = useTrustedCircle();
