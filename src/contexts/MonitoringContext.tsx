@@ -570,6 +570,107 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(emotionInterval);
   }, [isMonitoring, heartRate, speechPercentage, baselineHeartRate, baselineVoiceTone, baselineVoiceSpeed, runInBackground, isTalking]);
 
+  // ---- Flow State detection (secret 17th emotion) ----
+  // Evaluates the five criteria once per minute. Five consecutive passing
+  // readings = sustained Flow (≥5 min). On entry: notify + start session
+  // sampling. On exit: write a flowSessions doc with duration + averages.
+  useEffect(() => {
+    if (!isMonitoring || !isSetupComplete) return;
+    const tick = setInterval(() => {
+      const baseline = baselineHeartRate > 0 ? baselineHeartRate : 75;
+      // Live WPM proxy: user's natural speech rate from profile (or baseline calibration).
+      const wpm = currentProfile?.naturalSpeechRate
+        ?? currentProfile?.baselineSpeechRate
+        ?? baselineVoiceSpeed
+        ?? 0;
+      const passes = meetsFlowCriteria({
+        heartRate,
+        baselineHeartRate: baseline,
+        currentHrv: latestHrvRef.current,
+        averageHrv: hrvAvgRef.current,
+        speechWpm: wpm,
+        speechPercentage,
+        voiceTone: baselineVoiceTone,
+      });
+
+      if (passes) {
+        flowStreakRef.current += 1;
+        // Capture per-minute samples once we've started accumulating.
+        flowSessionSamplesRef.current.hr.push(heartRate);
+        if (latestHrvRef.current != null) flowSessionSamplesRef.current.hrv.push(latestHrvRef.current);
+        flowSessionSamplesRef.current.tone.push(baselineVoiceTone);
+        flowSessionSamplesRef.current.wpm.push(wpm);
+        flowSessionSamplesRef.current.speechPct.push(speechPercentage);
+
+        if (flowStreakRef.current >= FLOW_REQUIRED_READINGS && !flowActive) {
+          // Enter Flow State.
+          const startedAt = Date.now() - FLOW_REQUIRED_READINGS * 60_000;
+          flowSessionStartRef.current = startedAt;
+          setFlowStartedAt(startedAt);
+          setFlowActive(true);
+          if (!flowDiscovered) {
+            markFlowDiscovered();
+            setFlowDiscovered(true);
+          }
+          if (!flowNotifiedRef.current) {
+            flowNotifiedRef.current = true;
+            toast({
+              title: "You're in Flow State 🌊",
+              description: "This is your peak. Don't stop.",
+              duration: 6000,
+            });
+          }
+        }
+      } else {
+        // Criteria broken.
+        if (flowActive && flowSessionStartRef.current != null) {
+          const startedAt = flowSessionStartRef.current;
+          const endedAt = Date.now();
+          const durationMs = endedAt - startedAt;
+          const durationMinutes = Math.round(durationMs / 60_000);
+          const samples = flowSessionSamplesRef.current;
+          const mean = (xs: number[]) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0;
+          const sessionDoc = {
+            startedAt: new Date(startedAt),
+            endedAt: new Date(endedAt),
+            durationMs,
+            durationMinutes,
+            timeOfDay: new Date(startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            hourOfDay: new Date(startedAt).getHours(),
+            averages: {
+              heartRate: Math.round(mean(samples.hr)),
+              hrv: Math.round(mean(samples.hrv)),
+              voiceTone: Math.round(mean(samples.tone)),
+              speechWpm: Math.round(mean(samples.wpm)),
+              speechPercentage: Math.round(mean(samples.speechPct)),
+            },
+            createdAt: serverTimestamp(),
+          };
+          if (uid) {
+            void addDoc(collection(db, 'users', uid, 'flowSessions'), sessionDoc)
+              .then(() => {
+                console.log('[FirestoreWrite] trigger=flow-session → users/%s/flowSessions duration=%dm', uid, durationMinutes);
+                setFlowSessionWriteCount((n) => n + 1);
+              })
+              .catch((e) => console.error('[Flow] session write failed', e));
+          }
+        }
+        flowStreakRef.current = 0;
+        flowSessionStartRef.current = null;
+        flowSessionSamplesRef.current = { hr: [], hrv: [], tone: [], wpm: [], speechPct: [] };
+        flowNotifiedRef.current = false;
+        if (flowActive) setFlowActive(false);
+        if (flowStartedAt != null) setFlowStartedAt(null);
+      }
+    }, 60_000);
+    return () => clearInterval(tick);
+  }, [
+    isMonitoring, isSetupComplete, heartRate, speechPercentage, baselineHeartRate,
+    baselineVoiceTone, baselineVoiceSpeed, currentProfile, uid,
+    flowActive, flowDiscovered, flowStartedAt, toast,
+  ]);
+
+
   // Sample current readings into the rolling buffer every 60s
   useEffect(() => {
     if (!isMonitoring || !isSetupComplete) return;
