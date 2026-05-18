@@ -14,8 +14,14 @@ import { useMonitoring } from '@/contexts/MonitoringContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { EmotionType } from '@/utils/emotionUtils';
 import { getEmotionColor, ALL_EMOTIONS } from '@/utils/emotionUtils';
-import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity } from 'lucide-react';
+import { ChevronDown, ChevronUp, Heart, MessageCircle, Activity, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  computeEarnedAchievements,
+  FLOW_ACHIEVEMENTS,
+  FLOW_GOLD,
+  type FlowSessionLite,
+} from '@/utils/flowState';
 
 const EMOTION_ORDER: EmotionType[] = ALL_EMOTIONS;
 
