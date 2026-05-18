@@ -390,7 +390,13 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const sub = subscribeToWatchBiometrics(({ heartRate: hr, hrv }) => {
       watchConnectedRef.current = true;
       if (hr > 0) setHeartRate(hr);
-      if (hrv > 0) latestHrvRef.current = hrv;
+      if (hrv > 0) {
+        latestHrvRef.current = hrv;
+        // EMA for personal HRV average (alpha 0.1 → ~10-sample window).
+        hrvAvgRef.current = hrvAvgRef.current == null
+          ? hrv
+          : hrvAvgRef.current * 0.9 + hrv * 0.1;
+      }
     });
     const probe = setInterval(() => {
       watchConnectedRef.current = sub.isConnected();
