@@ -23,10 +23,20 @@ const EMOTION_COLOR: Record<EmotionType, { body: string; spot: string; accent: s
 interface MoodCowProps {
   emotion: EmotionType;
   className?: string;
+  /** Secret Flow State override — renders the cow in solid gold with a slow pulse. */
+  flowActive?: boolean;
 }
 
-const MoodCow: React.FC<MoodCowProps> = ({ emotion, className }) => {
-  const c = EMOTION_COLOR[emotion] ?? EMOTION_COLOR.neutral;
+const FLOW_GOLD = '#FFD700';
+const FLOW_SPOT = '#C9A227';
+const FLOW_ACCENT = '#FFE680';
+const FLOW_CHEEK = '#E0B400';
+
+const MoodCow: React.FC<MoodCowProps> = ({ emotion, className, flowActive }) => {
+  const base = EMOTION_COLOR[emotion] ?? EMOTION_COLOR.neutral;
+  const c = flowActive
+    ? { body: FLOW_GOLD, spot: FLOW_SPOT, accent: FLOW_ACCENT, cheek: FLOW_CHEEK }
+    : base;
   const stroke = '#3a2a2a';
 
   return (
