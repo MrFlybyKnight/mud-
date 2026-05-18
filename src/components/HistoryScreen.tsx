@@ -120,6 +120,48 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
     return () => { cancelled = true; };
   }, [uid, subcheckWriteCount]);
 
+  // Fetch Flow State sessions (secret 17th emotion). Only render the section
+  // if the user has actually discovered Flow — keeps the Easter egg hidden.
+  useEffect(() => {
+    if (!uid || !flowDiscovered) { setFlowSessions([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const q = query(
+          collection(db, 'users', uid, 'flowSessions'),
+          orderBy('startedAt', 'desc'),
+          limit(50),
+        );
+        const snap = await getDocs(q);
+        const next: Array<FlowSessionLite & { id: string }> = [];
+        snap.forEach((d) => {
+          const data = d.data() as {
+            startedAt?: { toDate?: () => Date } | Date;
+            durationMinutes?: number;
+          };
+          const start =
+            data.startedAt instanceof Date
+              ? data.startedAt
+              : data.startedAt?.toDate?.() ?? new Date();
+          next.push({
+            id: d.id,
+            startedAt: start.getTime(),
+            durationMinutes: data.durationMinutes ?? 0,
+          });
+        });
+        if (!cancelled) setFlowSessions(next);
+      } catch (err) {
+        console.warn('[History] flow fetch error', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid, flowSessionWriteCount, flowDiscovered]);
+
+  const earnedAchievements = useMemo(
+    () => computeEarnedAchievements(flowSessions),
+    [flowSessions],
+  );
+
   // Histogram: minutes per emotion today
   const histogram = useMemo(() => {
     const minutes: Partial<Record<EmotionType, number>> = {};
