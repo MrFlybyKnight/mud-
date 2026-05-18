@@ -209,6 +209,20 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [subcheckWriteCount, setSubcheckWriteCount] = useState<number>(0);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ---- Flow State (secret 17th emotion — Easter egg) ----
+  const [flowActive, setFlowActive] = useState<boolean>(false);
+  const [flowStartedAt, setFlowStartedAt] = useState<number | null>(null);
+  const [flowDiscovered, setFlowDiscovered] = useState<boolean>(() => readFlowDiscovered());
+  const [flowSessionWriteCount, setFlowSessionWriteCount] = useState<number>(0);
+  const flowStreakRef = useRef<number>(0);
+  const flowSessionStartRef = useRef<number | null>(null);
+  const flowSessionSamplesRef = useRef<{
+    hr: number[]; hrv: number[]; tone: number[]; wpm: number[]; speechPct: number[];
+  }>({ hr: [], hrv: [], tone: [], wpm: [], speechPct: [] });
+  const hrvAvgRef = useRef<number | null>(null);
+  const flowNotifiedRef = useRef<boolean>(false);
+  const { currentProfile } = useProfile();
+
   // Rolling aggregation buffers
   const rollingBufferRef = useRef<{
     heartRates: number[];
