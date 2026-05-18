@@ -428,7 +428,12 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       // Capture latest HRV alongside; null if unavailable.
       const hrv = await readLatestHRV();
-      if (hrv != null) latestHrvRef.current = hrv;
+      if (hrv != null) {
+        latestHrvRef.current = hrv;
+        hrvAvgRef.current = hrvAvgRef.current == null
+          ? hrv
+          : hrvAvgRef.current * 0.9 + hrv * 0.1;
+      }
 
       // Add to assessment data
       if (isSetupComplete) {
