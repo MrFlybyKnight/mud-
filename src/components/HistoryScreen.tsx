@@ -62,12 +62,13 @@ const checkpointCache = new Map<string, { count: number; data: Checkpoint[] }>()
 
 const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
   const { uid } = useAuth();
-  const { subcheckWriteCount } = useMonitoring();
+  const { subcheckWriteCount, flowSessionWriteCount, flowDiscovered } = useMonitoring();
   const { notifications } = useNotification();
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(() =>
     uid ? checkpointCache.get(uid)?.data ?? [] : [],
   );
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [flowSessions, setFlowSessions] = useState<Array<FlowSessionLite & { id: string }>>([]);
 
   useEffect(() => {
     if (!uid) {
