@@ -318,6 +318,65 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack: _onBack }) => {
         })}
       </div>
 
+      {/* Flow State — only rendered after the user has discovered it. */}
+      {flowDiscovered && flowSessions.length > 0 && (
+        <section
+          className="shrink-0 rounded-2xl border p-3"
+          style={{ borderColor: FLOW_GOLD, background: 'rgba(255, 215, 0, 0.06)' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-4 w-4" style={{ color: FLOW_GOLD }} />
+              <h2 className="text-sm font-semibold" style={{ color: FLOW_GOLD }}>
+                Flow State 🌊
+              </h2>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: FLOW_GOLD }}>
+              {flowSessions.length} session{flowSessions.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <ul className="space-y-1.5">
+            {flowSessions.slice(0, 5).map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs"
+                style={{ background: 'rgba(255, 215, 0, 0.08)' }}
+              >
+                <span
+                  className="inline-flex h-5 px-2 items-center rounded-full text-[10px] font-semibold text-black"
+                  style={{ background: FLOW_GOLD }}
+                >
+                  FLOW
+                </span>
+                <span className="text-slate-200 tabular-nums">
+                  {new Date(s.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>
+                <span className="ml-auto tabular-nums" style={{ color: FLOW_GOLD }}>
+                  {s.durationMinutes}m
+                </span>
+              </li>
+            ))}
+          </ul>
+          {earnedAchievements.length > 0 && (
+            <div className="mt-3 pt-2 border-t flex flex-wrap gap-1.5" style={{ borderColor: 'rgba(255,215,0,0.25)' }}>
+              {earnedAchievements.map((id) => {
+                const a = FLOW_ACHIEVEMENTS[id];
+                return (
+                  <span
+                    key={id}
+                    title={a.description}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-black"
+                    style={{ background: FLOW_GOLD }}
+                  >
+                    ★ {a.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Pinned histogram */}
       <section className="shrink-0 rounded-2xl border border-slate-800 bg-slate-900/50 p-3">
         <div className="flex items-end justify-between gap-2 h-20">
