@@ -13,6 +13,13 @@ import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/fires
 import { db } from '../firebase/config';
 import { readHeartRateOrSimulate, readLatestHRV } from '../health/healthConnect';
 import { subscribeToWatchBiometrics, subscribeToWatchSpeech } from '../health/wearDataReceiver';
+import {
+  meetsFlowCriteria,
+  FLOW_REQUIRED_READINGS,
+  isFlowDiscovered as readFlowDiscovered,
+  markFlowDiscovered,
+} from '../utils/flowState';
+import { useProfile } from './ProfileContext';
 
 // Define the assessment data structure
 interface AssessmentData {
