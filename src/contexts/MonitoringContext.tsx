@@ -1058,6 +1058,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     lastWriteAt,
     queuedMetricsCount,
     subcheckWriteCount,
+
+    flowActive,
+    flowStartedAt,
+    flowDiscovered,
+    flowSessionWriteCount,
   };
   
   return (
