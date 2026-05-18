@@ -109,6 +109,16 @@ interface MonitoringContextType {
   // depend on this to refetch subcheck/checkpoint data without using
   // continuous onSnapshot listeners.
   subcheckWriteCount: number;
+
+  // ---- Flow State (secret 17th emotion — Easter egg) ----
+  /** True while the user is currently in a sustained Flow State. */
+  flowActive: boolean;
+  /** Epoch ms when the current Flow session started, or null. */
+  flowStartedAt: number | null;
+  /** Becomes true the first time the user ever enters Flow State. */
+  flowDiscovered: boolean;
+  /** Increments each time a Flow session is written to Firestore. */
+  flowSessionWriteCount: number;
 }
 
 export const MonitoringContext = createContext<MonitoringContextType | null>(null);
