@@ -2,7 +2,8 @@
   "name": "MūD",
   "short_name": "MūD",
   "description": "Smartwatch communication coach",
-  "start_url": "/",
+  "start_url": "https://mudring.one",
+  "scope": "https://mudring.one/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
@@ -14,3 +15,4 @@
     }
   ]
 }
+
