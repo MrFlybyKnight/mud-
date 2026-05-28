@@ -722,9 +722,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           timestamp: serverTimestamp(),
           windowStart: new Date(buf.windowStart),
           windowEnd: new Date(),
-          trigger: 'subcheck-20m',
+          trigger: 'subcheck-30m',
         });
-        console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
+        console.log('[FirestoreWrite] trigger=subcheck-30m → users/%s/subchecks', uid);
         // Notify subscribers (history screen, timeline bar, loquacity) that
         // there is fresh subcheck data to fetch — replaces continuous onSnapshot listeners.
         setSubcheckWriteCount((n) => n + 1);
