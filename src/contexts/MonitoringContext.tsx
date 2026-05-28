@@ -148,6 +148,12 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isTalking, setIsTalking] = useState<boolean>(false);
   const [runInBackground, setRunInBackground] = useState<boolean>(true); // Default to running in background
 
+  // Real voice-activity detection. Only opens the mic when the user has
+  // explicitly enabled "talking" AND monitoring is active. The returned ref
+  // tracks whether the user is *actually* speaking right now (vs. silent
+  // background noise) on every audio frame.
+  const vadSpeakingRef = useVoiceActivity(isMonitoring && isTalking);
+
   // Setup and calibration state
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
   const [isSetupHydrating, setIsSetupHydrating] = useState<boolean>(true);
