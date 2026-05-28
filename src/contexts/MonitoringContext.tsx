@@ -20,6 +20,7 @@ import {
   markFlowDiscovered,
 } from '../utils/flowState';
 import { useProfile } from './ProfileContext';
+import { useVoiceActivity } from '../hooks/useVoiceActivity';
 
 // Define the assessment data structure
 interface AssessmentData {
@@ -146,6 +147,12 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isMonitoring, setIsMonitoring] = useState<boolean>(true);
   const [isTalking, setIsTalking] = useState<boolean>(false);
   const [runInBackground, setRunInBackground] = useState<boolean>(true); // Default to running in background
+
+  // Real voice-activity detection. Only opens the mic when the user has
+  // explicitly enabled "talking" AND monitoring is active. The returned ref
+  // tracks whether the user is *actually* speaking right now (vs. silent
+  // background noise) on every audio frame.
+  const vadSpeakingRef = useVoiceActivity(isMonitoring && isTalking);
 
   // Setup and calibration state
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
@@ -470,7 +477,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Watch-filtered speech wins when available.
       if (watchConnectedRef.current) return;
 
-      const newSpeechPercentage = generateSpeechPercentage(isTalking, speechPercentage);
+      // Real voice activity: only count time when the mic is actually picking
+      // up speech (not silence or background noise). Falls back to the manual
+      // isTalking flag if the mic is unavailable so behaviour degrades safely.
+      const actuallySpeaking = isTalking && vadSpeakingRef.current;
+      const newSpeechPercentage = generateSpeechPercentage(actuallySpeaking, speechPercentage);
       setSpeechPercentage(newSpeechPercentage);
 
       if (isSetupComplete) {
@@ -686,7 +697,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(sampler);
   }, [isMonitoring, isSetupComplete, heartRate, speechPercentage, currentEmotion]);
 
-  // Rolling aggregation pipeline: subchecks (20m), checkpoints (60m), dailySummaries (24h)
+  // Rolling aggregation pipeline: subchecks (30m), checkpoints (60m), dailySummaries (24h)
   useEffect(() => {
     if (!uid || !isSetupComplete) return;
 
@@ -711,9 +722,9 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           timestamp: serverTimestamp(),
           windowStart: new Date(buf.windowStart),
           windowEnd: new Date(),
-          trigger: 'subcheck-20m',
+          trigger: 'subcheck-30m',
         });
-        console.log('[FirestoreWrite] trigger=subcheck-20m → users/%s/subchecks', uid);
+        console.log('[FirestoreWrite] trigger=subcheck-30m → users/%s/subchecks', uid);
         // Notify subscribers (history screen, timeline bar, loquacity) that
         // there is fresh subcheck data to fetch — replaces continuous onSnapshot listeners.
         setSubcheckWriteCount((n) => n + 1);
@@ -737,7 +748,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return best;
     };
 
-    const subcheckTimer = setInterval(writeSubcheck, 20 * 60 * 1000);
+    const subcheckTimer = setInterval(writeSubcheck, 30 * 60 * 1000);
     return () => {
       clearInterval(subcheckTimer);
     };

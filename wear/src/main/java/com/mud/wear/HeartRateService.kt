@@ -232,7 +232,7 @@ class HeartRateService : Service() {
         private const val NOTIF_ID = 4242
         private const val CHANNEL_ID = "mud_biometrics"
         private const val HRV_INTERVAL_MS = 20_000L          // 20 seconds
-        private const val BPM_INTERVAL_MS = 20L * 60 * 1000  // 20 minutes
+        private const val BPM_INTERVAL_MS = 30L * 60 * 1000  // 30 minutes (battery-optimised)
         private const val MAX_RR_SAMPLES = 300
 
         fun start(ctx: Context) {
