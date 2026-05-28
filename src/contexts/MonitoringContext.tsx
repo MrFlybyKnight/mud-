@@ -748,7 +748,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return best;
     };
 
-    const subcheckTimer = setInterval(writeSubcheck, 20 * 60 * 1000);
+    const subcheckTimer = setInterval(writeSubcheck, 30 * 60 * 1000);
     return () => {
       clearInterval(subcheckTimer);
     };
