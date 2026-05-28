@@ -697,7 +697,7 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => clearInterval(sampler);
   }, [isMonitoring, isSetupComplete, heartRate, speechPercentage, currentEmotion]);
 
-  // Rolling aggregation pipeline: subchecks (20m), checkpoints (60m), dailySummaries (24h)
+  // Rolling aggregation pipeline: subchecks (30m), checkpoints (60m), dailySummaries (24h)
   useEffect(() => {
     if (!uid || !isSetupComplete) return;
 
