@@ -477,7 +477,11 @@ export const MonitoringProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       // Watch-filtered speech wins when available.
       if (watchConnectedRef.current) return;
 
-      const newSpeechPercentage = generateSpeechPercentage(isTalking, speechPercentage);
+      // Real voice activity: only count time when the mic is actually picking
+      // up speech (not silence or background noise). Falls back to the manual
+      // isTalking flag if the mic is unavailable so behaviour degrades safely.
+      const actuallySpeaking = isTalking && vadSpeakingRef.current;
+      const newSpeechPercentage = generateSpeechPercentage(actuallySpeaking, speechPercentage);
       setSpeechPercentage(newSpeechPercentage);
 
       if (isSetupComplete) {
