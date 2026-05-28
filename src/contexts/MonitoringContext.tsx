@@ -20,6 +20,7 @@ import {
   markFlowDiscovered,
 } from '../utils/flowState';
 import { useProfile } from './ProfileContext';
+import { useVoiceActivity } from '../hooks/useVoiceActivity';
 
 // Define the assessment data structure
 interface AssessmentData {
