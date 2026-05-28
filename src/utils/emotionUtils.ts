@@ -72,6 +72,12 @@ export const determineEmotion = (
   speechVolume: number = 50,
   consecutiveReadings: number = 1
 ): EmotionType => {
+  // Confidence guard — if we don't yet have a calibrated baseline, or the
+  // incoming signal is implausible (zero / NaN), don't guess. Show Neutral
+  // until we actually have something to read.
+  if (!Number.isFinite(heartRate) || heartRate <= 30 || heartRate > 220) return 'neutral';
+  if (!Number.isFinite(heartRateBaseline) || heartRateBaseline <= 0) return 'neutral';
+
   const sigma = heartRateBaseline * 0.12;
   const halfSigmaHigh = heartRateBaseline + sigma * 0.5;
   const halfSigmaLow  = heartRateBaseline - sigma * 0.5;
