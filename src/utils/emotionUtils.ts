@@ -188,18 +188,20 @@ export const determineEmotion = (
     return 'sad';
   }
 
-  // Tired — depressed HR, almost no speech
-  if (heartRate < heartRateBaseline && speechPercentage < 15) {
+  // Tired — depressed HR clearly below baseline, almost no speech, sustained.
+  // Must hold for several readings before we'll commit, otherwise a single
+  // quiet moment was getting mis-labelled as Tired.
+  if (heartRate < oneSigmaLow && speechPercentage < 15 && sustained) {
     return 'tired';
   }
 
-  // Bored — depressed HR and minimal speech
-  if (heartRate < oneSigmaLow && speechPercentage < 25) {
+  // Bored — depressed HR and minimal speech, sustained.
+  if (heartRate < oneSigmaLow && speechPercentage < 25 && sustained) {
     return 'bored';
   }
 
-  // Calm — slightly below baseline with relaxed speech
-  if (heartRate < heartRateBaseline && speechPercentage > 20 && speechPercentage < 60) {
+  // Calm — slightly below baseline with relaxed speech, sustained.
+  if (heartRate < heartRateBaseline && speechPercentage > 20 && speechPercentage < 60 && sustained) {
     return 'calm';
   }
 
