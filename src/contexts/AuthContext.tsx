@@ -12,12 +12,30 @@ import {
   onAuthStateChanged,
   onIdTokenChanged,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
   type User,
 } from "firebase/auth";
+
+/**
+ * Native bridge exposed by the Android WebView host (MūD mobile app).
+ * When present, Google Sign-In is delegated to the native layer which
+ * dispatches a `mud:nativeAuth` window event carrying a Firebase ID token.
+ */
+interface NativeAuthBridge {
+  signInWithGoogle: () => void;
+}
+declare global {
+  interface Window {
+    NativeAuthBridge?: NativeAuthBridge;
+  }
+  interface WindowEventMap {
+    "mud:nativeAuth": CustomEvent<{ idToken: string }>;
+  }
+}
 import { auth } from "@/firebase/config";
 
 /**
