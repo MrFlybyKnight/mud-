@@ -198,6 +198,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return cred.user;
       },
       async signInWithGoogle() {
+        // If running inside the native Android WebView, delegate to the bridge.
+        const bridge =
+          typeof window !== "undefined" ? window.NativeAuthBridge : undefined;
+        if (bridge && typeof bridge.signInWithGoogle === "function") {
+          // Reject any in-flight request before starting a new one.
+          pendingNativeAuthRef.current?.reject(
+            new Error("Superseded by new native sign-in request")
+          );
+          return new Promise<User>((resolve, reject) => {
+            pendingNativeAuthRef.current = { resolve, reject };
+            try {
+              bridge.signInWithGoogle();
+            } catch (err) {
+              pendingNativeAuthRef.current = null;
+              reject(err);
+            }
+          });
+        }
+
         const provider = new GoogleAuthProvider();
         const cred = await signInWithPopup(auth, provider);
         return cred.user;
