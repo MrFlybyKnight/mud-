@@ -84,6 +84,7 @@ type PendingNativeAuth = {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const pendingNativeAuthRef = useRef<PendingNativeAuth | null>(null);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
