@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -12,12 +13,30 @@ import {
   onAuthStateChanged,
   onIdTokenChanged,
   sendPasswordResetEmail,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
   type User,
 } from "firebase/auth";
+
+/**
+ * Native bridge exposed by the Android WebView host (MūD mobile app).
+ * When present, Google Sign-In is delegated to the native layer which
+ * dispatches a `mud:nativeAuth` window event carrying a Firebase ID token.
+ */
+interface NativeAuthBridge {
+  signInWithGoogle: () => void;
+}
+declare global {
+  interface Window {
+    NativeAuthBridge?: NativeAuthBridge;
+  }
+  interface WindowEventMap {
+    "mud:nativeAuth": CustomEvent<{ idToken: string }>;
+  }
+}
 import { auth } from "@/firebase/config";
 
 /**
@@ -58,9 +77,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+type PendingNativeAuth = {
+  resolve: (user: User) => void;
+  reject: (err: unknown) => void;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const pendingNativeAuthRef = useRef<PendingNativeAuth | null>(null);
 
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (u) => {
@@ -125,10 +150,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }, 10 * 60 * 1000);
 
+    // Listen for native auth bridge callbacks (Android WebView host).
+    const onNativeAuth = async (e: CustomEvent<{ idToken: string }>) => {
+      const idToken = e?.detail?.idToken;
+      const pending = pendingNativeAuthRef.current;
+      if (!idToken) {
+        const err = new Error("mud:nativeAuth event missing idToken");
+        pending?.reject(err);
+        pendingNativeAuthRef.current = null;
+        return;
+      }
+      try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(auth, credential);
+        pending?.resolve(cred.user);
+      } catch (err) {
+        console.error("[NativeAuth] signInWithCredential failed", err);
+        pending?.reject(err);
+      } finally {
+        pendingNativeAuthRef.current = null;
+      }
+    };
+    window.addEventListener("mud:nativeAuth", onNativeAuth as EventListener);
+
     return () => {
       unsubAuth();
       unsubToken();
       window.clearInterval(interval);
+      window.removeEventListener("mud:nativeAuth", onNativeAuth as EventListener);
     };
   }, []);
 
@@ -149,6 +198,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return cred.user;
       },
       async signInWithGoogle() {
+        // If running inside the native Android WebView, delegate to the bridge.
+        const bridge =
+          typeof window !== "undefined" ? window.NativeAuthBridge : undefined;
+        if (bridge && typeof bridge.signInWithGoogle === "function") {
+          // Reject any in-flight request before starting a new one.
+          pendingNativeAuthRef.current?.reject(
+            new Error("Superseded by new native sign-in request")
+          );
+          return new Promise<User>((resolve, reject) => {
+            pendingNativeAuthRef.current = { resolve, reject };
+            try {
+              bridge.signInWithGoogle();
+            } catch (err) {
+              pendingNativeAuthRef.current = null;
+              reject(err);
+            }
+          });
+        }
+
         const provider = new GoogleAuthProvider();
         const cred = await signInWithPopup(auth, provider);
         return cred.user;
