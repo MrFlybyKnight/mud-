@@ -150,10 +150,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     }, 10 * 60 * 1000);
 
+    // Listen for native auth bridge callbacks (Android WebView host).
+    const onNativeAuth = async (e: CustomEvent<{ idToken: string }>) => {
+      const idToken = e?.detail?.idToken;
+      const pending = pendingNativeAuthRef.current;
+      if (!idToken) {
+        const err = new Error("mud:nativeAuth event missing idToken");
+        pending?.reject(err);
+        pendingNativeAuthRef.current = null;
+        return;
+      }
+      try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(auth, credential);
+        pending?.resolve(cred.user);
+      } catch (err) {
+        console.error("[NativeAuth] signInWithCredential failed", err);
+        pending?.reject(err);
+      } finally {
+        pendingNativeAuthRef.current = null;
+      }
+    };
+    window.addEventListener("mud:nativeAuth", onNativeAuth as EventListener);
+
     return () => {
       unsubAuth();
       unsubToken();
       window.clearInterval(interval);
+      window.removeEventListener("mud:nativeAuth", onNativeAuth as EventListener);
     };
   }, []);
 
