@@ -163,6 +163,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const credential = GoogleAuthProvider.credential(idToken);
         const cred = await signInWithCredential(auth, credential);
+
+        // Wait for onAuthStateChanged to fire with the new user before resolving
+        // so downstream Firestore writes don't race ahead of the auth state.
+        await new Promise<void>((resolve, reject) => {
+          const timeout = window.setTimeout(() => {
+            unsub();
+            reject(new Error("Native auth timeout waiting for auth state"));
+          }, 15000);
+          const unsub = onAuthStateChanged(auth, (u) => {
+            if (u && u.uid === cred.user.uid) {
+              window.clearTimeout(timeout);
+              unsub();
+              resolve();
+            }
+          });
+        });
+
         pending?.resolve(cred.user);
       } catch (err) {
         console.error("[NativeAuth] signInWithCredential failed", err);
